@@ -15,6 +15,7 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'manage-users' => \App\Http\Middleware\EnsureUserCanManageUsers::class,
+            'manage-releases' => \App\Http\Middleware\EnsureUserCanManageReleases::class,
         ]);
 
         // Sign out any user deactivated mid-session on their next request.

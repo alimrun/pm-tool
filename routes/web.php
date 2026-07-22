@@ -36,7 +36,7 @@ Route::middleware('auth')->group(function () {
         Route::post('projects/{project}/archive', [ProjectController::class, 'archive'])->name('projects.archive');
         Route::post('projects/{project}/restore', [ProjectController::class, 'restore'])->name('projects.restore');
 
-        // Teams
+        // Teams (settings/lifecycle stay admin-only; membership is opened below)
         Route::get('teams/create', [TeamController::class, 'create'])->name('teams.create');
         Route::post('teams', [TeamController::class, 'store'])->name('teams.store');
         Route::get('teams/{team}/edit', [TeamController::class, 'edit'])->name('teams.edit');
@@ -44,6 +44,18 @@ Route::middleware('auth')->group(function () {
         Route::delete('teams/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
         Route::post('teams/{team}/archive', [TeamController::class, 'archive'])->name('teams.archive');
         Route::post('teams/{team}/restore', [TeamController::class, 'restore'])->name('teams.restore');
+    });
+
+    /*
+     | Release planning & team membership — admins and team leads.
+     | Registered before the `{model}` show routes so `.../create` and
+     | `.../edit` resolve first.
+     */
+    Route::middleware('manage-releases')->group(function () {
+        // Team membership
+        Route::post('teams/{team}/members', [TeamController::class, 'addMember'])->name('teams.members.store');
+        Route::delete('teams/{team}/members/{user}', [TeamController::class, 'removeMember'])
+            ->name('teams.members.destroy');
 
         // Releases
         Route::get('releases/create', [ReleaseController::class, 'create'])->name('releases.create');
@@ -61,7 +73,7 @@ Route::middleware('auth')->group(function () {
             ->name('releases.documents.destroy')
             ->scopeBindings();
 
-        // Off-days are part of the plan → admin-managed.
+        // Off-days are part of the plan.
         Route::post('releases/{release}/off-days', [ReleaseOffDayController::class, 'store'])
             ->name('releases.offdays.store');
         Route::post('releases/{release}/off-days/weekends', [ReleaseOffDayController::class, 'markWeekends'])

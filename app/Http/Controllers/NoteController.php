@@ -13,6 +13,11 @@ class NoteController extends Controller
 {
     public function index(Request $request): View
     {
+        // Range mode: any From/To supplied lists every visible note across the span.
+        if ($request->filled('from') || $request->filled('to')) {
+            return $this->rangeIndex($request);
+        }
+
         $day = $request->filled('date')
             ? Carbon::parse($request->input('date'))->startOfDay()
             : now()->startOfDay();
@@ -25,11 +30,51 @@ class NoteController extends Controller
             ->get();
 
         return view('notes.index', [
+            'isRange' => false,
             'notes' => $notes,
             'day' => $day,
             'prev' => $day->copy()->subDay(),
             'next' => $day->copy()->addDay(),
             'isToday' => $day->isToday(),
+            'defaultFrom' => $day,
+            'defaultTo' => $day,
+        ]);
+    }
+
+    /**
+     * List notes falling within the [from, to] span, grouped by day (newest first).
+     */
+    private function rangeIndex(Request $request): View
+    {
+        $request->validate([
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $from = ($request->filled('from') ? Carbon::parse($request->input('from')) : now())->startOfDay();
+        $to = ($request->filled('to') ? Carbon::parse($request->input('to')) : now())->startOfDay();
+
+        // Tolerate a reversed range rather than returning nothing.
+        if ($from->gt($to)) {
+            [$from, $to] = [$to, $from];
+        }
+
+        $notes = Note::query()
+            ->with('author')
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->visibleTo($request->user())
+            ->orderByDesc('date')
+            ->latest()
+            ->get();
+
+        return view('notes.index', [
+            'isRange' => true,
+            'grouped' => $notes->groupBy(fn (Note $note) => $note->date->toDateString()),
+            'total' => $notes->count(),
+            'from' => $from,
+            'to' => $to,
+            'defaultFrom' => $from,
+            'defaultTo' => $to,
         ]);
     }
 

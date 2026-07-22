@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -55,6 +56,11 @@ class User extends Authenticatable
         return $this->role === self::ROLE_ADMIN;
     }
 
+    public function isTeamLead(): bool
+    {
+        return $this->role === self::ROLE_TEAM_LEAD;
+    }
+
     public function isViewer(): bool
     {
         return $this->role === self::ROLE_VIEWER;
@@ -64,6 +70,18 @@ class User extends Authenticatable
     public function canManageUsers(): bool
     {
         return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_CTO], true);
+    }
+
+    /** Admins and team leads may plan releases (create/edit, off-days, documents). */
+    public function canManageReleases(): bool
+    {
+        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_TEAM_LEAD], true);
+    }
+
+    /** Admins and team leads may add/remove people on a team. */
+    public function canManageTeamMembers(): bool
+    {
+        return $this->canManageReleases();
     }
 
     public function isActive(): bool
@@ -84,6 +102,18 @@ class User extends Authenticatable
     public function assignedTasks(): HasMany
     {
         return $this->hasMany(Task::class, 'assignee_id');
+    }
+
+    /** Teams this user belongs to. */
+    public function teams(): BelongsToMany
+    {
+        return $this->belongsToMany(Team::class)->withTimestamps();
+    }
+
+    /** Releases this user is assigned to. */
+    public function releases(): BelongsToMany
+    {
+        return $this->belongsToMany(Release::class)->withTimestamps();
     }
 
     public function comments(): HasMany

@@ -84,6 +84,49 @@ class DailyNotesTest extends TestCase
         $this->get(route('notes.index'))->assertRedirect(route('login'));
     }
 
+    public function test_range_view_shows_only_notes_within_the_span(): void
+    {
+        $me = User::factory()->create();
+
+        $this->note($me, ['date' => '2026-07-10', 'body' => 'Before range']);
+        $this->note($me, ['date' => '2026-07-15', 'body' => 'Inside range']);
+        $this->note($me, ['date' => '2026-07-20', 'body' => 'Also inside']);
+        $this->note($me, ['date' => '2026-07-25', 'body' => 'After range']);
+
+        $this->actingAs($me)->get(route('notes.index', ['from' => '2026-07-14', 'to' => '2026-07-21']))
+            ->assertOk()
+            ->assertSee('Inside range')
+            ->assertSee('Also inside')
+            ->assertDontSee('Before range')
+            ->assertDontSee('After range');
+    }
+
+    public function test_range_view_respects_visibility(): void
+    {
+        $me = User::factory()->create();
+        $other = User::factory()->create();
+
+        $this->note($me, ['date' => '2026-07-15', 'body' => 'My private', 'visibility' => 'private']);
+        $this->note($other, ['date' => '2026-07-16', 'body' => 'Their shared', 'visibility' => 'shared']);
+        $this->note($other, ['date' => '2026-07-17', 'body' => 'Their secret', 'visibility' => 'private']);
+
+        $this->actingAs($me)->get(route('notes.index', ['from' => '2026-07-01', 'to' => '2026-07-31']))
+            ->assertOk()
+            ->assertSee('My private')
+            ->assertSee('Their shared')
+            ->assertDontSee('Their secret');
+    }
+
+    public function test_range_view_tolerates_a_reversed_span(): void
+    {
+        $me = User::factory()->create();
+        $this->note($me, ['date' => '2026-07-15', 'body' => 'Inside range']);
+
+        $this->actingAs($me)->get(route('notes.index', ['from' => '2026-07-21', 'to' => '2026-07-10']))
+            ->assertOk()
+            ->assertSee('Inside range');
+    }
+
     public function test_rich_text_is_sanitized(): void
     {
         $user = User::factory()->create();

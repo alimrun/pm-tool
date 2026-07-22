@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\RecordsActivity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Team extends Model
@@ -23,6 +24,12 @@ class Team extends Model
     public function releases(): HasMany
     {
         return $this->hasMany(Release::class);
+    }
+
+    /** Members of this team. */
+    public function members(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withTimestamps();
     }
 
     public function isArchived(): bool

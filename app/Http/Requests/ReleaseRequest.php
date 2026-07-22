@@ -3,6 +3,7 @@
 namespace App\Http\Requests;
 
 use App\Models\Release;
+use App\Models\Team;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Carbon;
@@ -12,7 +13,7 @@ class ReleaseRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isAdmin() ?? false;
+        return $this->user()?->canManageReleases() ?? false;
     }
 
     public function rules(): array
@@ -37,6 +38,10 @@ class ReleaseRequest extends FormRequest
         $rules['off_days'] = ['nullable', 'array'];
         $rules['off_days.*.date'] = ['required', 'date', 'distinct'];
         $rules['off_days.*.reason'] = ['nullable', 'string', 'max:255'];
+
+        // Members assigned to this release (validated against the team below).
+        $rules['members'] = ['nullable', 'array'];
+        $rules['members.*'] = ['integer', Rule::exists('users', 'id')->whereNull('deactivated_at')];
 
         return $rules;
     }
@@ -79,6 +84,16 @@ class ReleaseRequest extends FormRequest
                 $date = $this->parseDate($off['date'] ?? null);
                 if ($date && ($date->lt($start) || $date->gt($end))) {
                     $validator->errors()->add("off_days.$i.date", 'Off-days must fall within the release window.');
+                }
+            }
+
+            // Selected members must belong to the owning team.
+            $teamId = (int) $this->input('team_id');
+            $members = array_map('intval', (array) $this->input('members', []));
+            if ($teamId && $members) {
+                $teamMemberIds = Team::find($teamId)?->members()->pluck('users.id')->all() ?? [];
+                if (array_diff($members, $teamMemberIds)) {
+                    $validator->errors()->add('members', 'Selected members must belong to the owning team.');
                 }
             }
         });

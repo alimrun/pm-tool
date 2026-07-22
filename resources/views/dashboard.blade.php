@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 class="page-title">Release timeline</h2>
-            @if (auth()->user()->isAdmin())
+            @if (auth()->user()->canManageReleases())
                 <a href="{{ route('releases.create') }}"
                    class="btn-primary btn-sm">
                     New release
@@ -85,7 +85,7 @@
             {{-- Timeline --}}
             @if (empty($groups))
                 <div class="rounded-xl bg-white p-12 text-center text-slate-500 shadow">
-                    No releases match this view. @if (auth()->user()->isAdmin())<a href="{{ route('releases.create') }}" class="text-indigo-600 hover:underline">Create one</a>.@endif
+                    No releases match this view. @if (auth()->user()->canManageReleases())<a href="{{ route('releases.create') }}" class="text-indigo-600 hover:underline">Create one</a>.@endif
                 </div>
             @else
                 <div class="overflow-x-auto card">

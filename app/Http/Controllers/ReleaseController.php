@@ -77,6 +77,8 @@ class ReleaseController extends Controller
             ]),
             'projects' => Project::active()->orderBy('name')->get(),
             'teams' => Team::active()->orderBy('name')->get(),
+            'teamMembers' => $this->teamMembersMap(),
+            'memberValues' => [],
             'phaseValues' => [],
             'offDayValues' => [],
         ]);
@@ -90,6 +92,7 @@ class ReleaseController extends Controller
             ]));
             $this->syncPhases($release, $request->input('phases', []));
             $this->syncOffDays($release, $request->input('off_days', []));
+            $release->members()->sync($request->input('members', []));
 
             return $release;
         });
@@ -104,7 +107,7 @@ class ReleaseController extends Controller
         $release->load([
             'project', 'team', 'phases', 'documents.uploader',
             'rootTasks.subtasks.assignee', 'rootTasks.assignee', 'rootTasks.comments',
-            'offDays', 'comments.user',
+            'offDays', 'comments.user', 'members',
         ]);
 
         $conflicts = $this->overlap->conflictsFor(
@@ -130,12 +133,14 @@ class ReleaseController extends Controller
 
     public function edit(Release $release): View
     {
-        $release->load('phases');
+        $release->load(['phases', 'members']);
 
         return view('releases.edit', [
             'release' => $release,
             'projects' => Project::active()->orderBy('name')->get(),
             'teams' => Team::active()->orderBy('name')->get(),
+            'teamMembers' => $this->teamMembersMap(),
+            'memberValues' => $release->members->pluck('id')->all(),
             'phaseValues' => $release->phases->keyBy('phase'),
             'offDayValues' => $release->offDays()->orderBy('date')->get()
                 ->map(fn ($o) => ['date' => $o->date->toDateString(), 'reason' => $o->reason])->all(),
@@ -150,6 +155,7 @@ class ReleaseController extends Controller
             ]));
             $this->syncPhases($release, $request->input('phases', []));
             $this->syncOffDays($release, $request->input('off_days', []));
+            $release->members()->sync($request->input('members', []));
         });
 
         return redirect()->route('releases.show', $release)
@@ -164,6 +170,27 @@ class ReleaseController extends Controller
 
         return redirect()->route('dashboard')
             ->with('success', "Release “{$name}” deleted.");
+    }
+
+    /**
+     * Active teams mapped to their active members, for the release form's
+     * dependent member picker: [teamId => [['id','name','role'], ...]].
+     *
+     * @return array<int, array<int, array{id: int, name: string, role: string}>>
+     */
+    private function teamMembersMap(): array
+    {
+        return Team::active()
+            ->with(['members' => fn ($q) => $q->active()->orderBy('name')])
+            ->get()
+            ->mapWithKeys(fn (Team $team) => [
+                $team->id => $team->members->map(fn (User $u) => [
+                    'id' => $u->id,
+                    'name' => $u->name,
+                    'role' => $u->roleLabel(),
+                ])->values()->all(),
+            ])
+            ->all();
     }
 
     /**

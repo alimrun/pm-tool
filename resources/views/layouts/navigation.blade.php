@@ -40,7 +40,7 @@
 
         {{-- Right: actions + user menu --}}
         <div class="flex items-center gap-3">
-            @if ($user->isAdmin())
+            @if ($user->canManageReleases())
                 <a href="{{ route('releases.create') }}" class="btn-primary btn-sm hidden sm:inline-flex">
                     <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/></svg>
                     New release
@@ -94,7 +94,7 @@
                        'text-slate-600 hover:bg-slate-100' => ! $active,
                    ])>{{ $item['label'] }}</a>
             @endforeach
-            @if ($user->isAdmin())
+            @if ($user->canManageReleases())
                 <a href="{{ route('releases.create') }}" class="block rounded-lg px-3 py-2 text-base font-medium text-brand-700 hover:bg-brand-50">+ New release</a>
             @endif
         </div>

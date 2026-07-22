@@ -27,7 +27,7 @@
             </div>
             <div class="flex items-center gap-2">
                 <a href="{{ route('board.index', ['release_id' => $release->id]) }}" class="btn-secondary btn-sm">Board view</a>
-                @if (auth()->user()->isAdmin())
+                @if (auth()->user()->canManageReleases())
                     <a href="{{ route('releases.edit', $release) }}" class="btn-secondary btn-sm">Edit release</a>
                 @endif
             </div>
@@ -182,6 +182,33 @@
                         </dl>
                     </div>
 
+                    {{-- Members --}}
+                    <div class="card">
+                        <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
+                            <h3 class="text-sm font-semibold text-slate-700">Members ({{ $release->members->count() }})</h3>
+                            @if (auth()->user()->canManageReleases())
+                                <a href="{{ route('releases.edit', $release) }}" class="text-xs font-medium text-brand-600 hover:text-brand-700">Edit</a>
+                            @endif
+                        </div>
+                        @if ($release->members->isEmpty())
+                            <div class="px-5 py-6 text-center text-sm text-slate-400">No members assigned.</div>
+                        @else
+                            <ul class="divide-y divide-slate-100">
+                                @foreach ($release->members as $member)
+                                    <li class="flex items-center gap-3 px-5 py-3">
+                                        <span class="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
+                                            {{ strtoupper(\Illuminate\Support\Str::of($member->name)->explode(' ')->map(fn ($p) => $p[0] ?? '')->take(2)->implode('')) }}
+                                        </span>
+                                        <div class="min-w-0">
+                                            <p class="truncate text-sm font-medium text-slate-800">{{ $member->name }}</p>
+                                            <p class="truncate text-xs text-slate-400">{{ $member->roleLabel() }}</p>
+                                        </div>
+                                    </li>
+                                @endforeach
+                            </ul>
+                        @endif
+                    </div>
+
                     {{-- Completion --}}
                     @if ($release->isComplete())
                         <div class="card overflow-hidden">
@@ -196,7 +223,7 @@
                                         @if ($release->completedBy) · by {{ $release->completedBy->name }} @endif
                                     </p>
                                 </div>
-                                @if (auth()->user()->isAdmin())
+                                @if (auth()->user()->canManageReleases())
                                     <form method="POST" action="{{ route('releases.reopen', $release) }}">
                                         @csrf
                                         <button class="btn-secondary btn-sm">Reopen</button>
@@ -207,7 +234,7 @@
                                 <div class="prose-notes px-5 py-4 text-sm text-slate-700">{!! $release->renderedCompletionNotes() !!}</div>
                             @endif
                         </div>
-                    @elseif (auth()->user()->isAdmin())
+                    @elseif (auth()->user()->canManageReleases())
                         <div class="card card-pad" x-data="{ open: false }">
                             <h3 class="text-sm font-semibold text-slate-900">Mark complete</h3>
                             <p class="mt-0.5 text-xs text-slate-500">Drops it off the dashboard and stops it counting against the team's schedule. Reopen anytime.</p>
@@ -228,7 +255,7 @@
                     <div class="card">
                         <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                             <h3 class="text-sm font-semibold text-slate-700">Off-days ({{ $release->offDays->count() }})</h3>
-                            @if (auth()->user()->isAdmin())
+                            @if (auth()->user()->canManageReleases())
                                 <form method="POST" action="{{ route('releases.offdays.weekends', $release) }}">
                                     @csrf
                                     <button class="text-xs font-medium text-brand-600 hover:text-brand-700">Mark weekends</button>
@@ -236,7 +263,7 @@
                             @endif
                         </div>
 
-                        @if (auth()->user()->isAdmin())
+                        @if (auth()->user()->canManageReleases())
                             <form method="POST" action="{{ route('releases.offdays.store', $release) }}" class="space-y-3 border-b border-slate-100 px-5 py-4">
                                 @csrf
                                 <div>
@@ -259,7 +286,7 @@
                                     <li class="inline-flex items-center gap-2 rounded-full bg-slate-100 px-3 py-1 text-xs text-slate-700">
                                         <span class="font-medium">{{ $off->date->format('D, M j') }}</span>
                                         @if ($off->reason)<span class="text-slate-400">· {{ $off->reason }}</span>@endif
-                                        @if (auth()->user()->isAdmin())
+                                        @if (auth()->user()->canManageReleases())
                                             <form method="POST" action="{{ route('releases.offdays.destroy', [$release, $off]) }}">
                                                 @csrf @method('DELETE')
                                                 <button class="text-slate-400 hover:text-rose-600" title="Remove">✕</button>
@@ -277,7 +304,7 @@
                             <h3 class="text-sm font-semibold text-slate-700">Documents ({{ $release->documents->count() }})</h3>
                         </div>
 
-                        @if (auth()->user()->isAdmin())
+                        @if (auth()->user()->canManageReleases())
                             <form method="POST" action="{{ route('releases.documents.store', $release) }}" enctype="multipart/form-data" class="space-y-2 border-b border-slate-100 px-5 py-4">
                                 @csrf
                                 <input type="file" name="document" required
@@ -300,7 +327,7 @@
                                             <a href="{{ route('releases.documents.download', [$release, $document]) }}" class="block truncate text-sm font-medium text-slate-800 hover:text-brand-600">{{ $document->original_name }}</a>
                                             <p class="text-xs text-slate-400">{{ $document->humanSize() }} · {{ $document->created_at->format('M j, Y') }}</p>
                                         </div>
-                                        @if (auth()->user()->isAdmin())
+                                        @if (auth()->user()->canManageReleases())
                                             <form method="POST" action="{{ route('releases.documents.destroy', [$release, $document]) }}"
                                                   data-confirm="Delete this document?" data-confirm-verb="Delete">
                                                 @csrf @method('DELETE')
