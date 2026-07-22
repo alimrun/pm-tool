@@ -13,10 +13,13 @@
     }
     $startSeed = old('start_date', optional($release->start_date)->toDateString()) ?? '';
     $endSeed = old('end_date', optional($release->end_date)->toDateString()) ?? '';
+
+    // Lookup maps so the live summary can name the chosen project/team.
+    $projectMap = $projects->mapWithKeys(fn ($p) => [$p->id => ['name' => $p->name, 'color' => $p->color]])->all();
+    $teamMap = $teams->mapWithKeys(fn ($t) => [$t->id => ['name' => $t->name, 'color' => $t->color]])->all();
 @endphp
 
-<div class="space-y-6"
-     x-data="releaseForm({
+<div x-data="releaseForm({
         start: @js($startSeed),
         end: @js($endSeed),
         phaseKeys: @js(array_keys(Release::PHASES)),
@@ -24,10 +27,19 @@
         phaseColors: @js($phaseColors),
         phases: @js($phaseConfig),
         offDays: @js($offDayValues ?? []),
+        name: @js(old('name', $release->name) ?? ''),
+        year: @js((int) old('year', $release->year) ?: null),
+        quarter: @js((int) old('quarter', $release->quarter) ?: null),
+        projectId: @js((int) old('project_id', $release->project_id)) || null,
+        projectMap: @js($projectMap),
         teamId: @js((int) old('team_id', $release->team_id)) || null,
+        teamMap: @js($teamMap),
         teamMembers: @js($teamMembers ?? (object) []),
         selected: @js(array_map('intval', (array) old('members', $memberValues ?? []))),
      })">
+
+    <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+    <div class="space-y-6 lg:col-span-2">
 
     {{-- ============ Release details ============ --}}
     <section class="card overflow-hidden">
@@ -44,7 +56,7 @@
             <div>
                 <label for="name" class="field-label">Release name</label>
                 <input id="name" name="name" type="text" value="{{ old('name', $release->name) }}" required
-                       placeholder="e.g. v2.4 Checkout revamp" class="field-input">
+                       x-model="name" placeholder="e.g. v2.4 Checkout revamp" class="field-input">
                 @error('name') <p class="field-error">{{ $message }}</p> @enderror
             </div>
 
@@ -52,12 +64,12 @@
                 <div>
                     <label for="year" class="field-label">Year</label>
                     <input id="year" name="year" type="number" min="2000" max="2100" value="{{ old('year', $release->year) }}" required
-                           class="field-input">
+                           x-model.number="year" class="field-input">
                     @error('year') <p class="field-error">{{ $message }}</p> @enderror
                 </div>
                 <div>
                     <label for="quarter" class="field-label">Quarter</label>
-                    <select id="quarter" name="quarter" required class="field-input">
+                    <select id="quarter" name="quarter" required x-model.number="quarter" class="field-input">
                         @foreach ([1,2,3,4] as $q)
                             <option value="{{ $q }}" @selected((int) old('quarter', $release->quarter) === $q)>Q{{ $q }}</option>
                         @endforeach
@@ -90,7 +102,7 @@
         <div class="grid gap-5 p-5 sm:grid-cols-2 sm:p-6">
             <div>
                 <label for="project_id" class="field-label">Project</label>
-                <select id="project_id" name="project_id" required class="field-input">
+                <select id="project_id" name="project_id" required x-model.number="projectId" class="field-input">
                     <option value="">— Select a project —</option>
                     @foreach ($projects as $project)
                         <option value="{{ $project->id }}" @selected((int) old('project_id', $release->project_id) === $project->id)>{{ $project->name }}</option>
@@ -301,6 +313,126 @@
             </div>
         </div>
     </section>
+
+    </div>{{-- /main column --}}
+
+    {{-- ============ Right sidebar — mirrors the form, top to bottom ============ --}}
+    <aside class="lg:col-span-1">
+        <div class="space-y-6 lg:sticky lg:top-6">
+
+            {{-- At a glance (live) --}}
+            <section class="card overflow-hidden">
+                <div class="card-header">
+                    <h3 class="text-sm font-semibold text-slate-800">At a glance</h3>
+                    <span class="badge bg-brand-50 text-brand-700" x-text="(year || '—') + ' · ' + (quarter ? 'Q'+quarter : '—')"></span>
+                </div>
+                <div class="space-y-4 p-5 text-sm sm:p-6">
+                    <div>
+                        <p class="eyebrow">Release</p>
+                        <p class="mt-0.5 font-semibold" :class="name ? 'text-slate-800' : 'text-slate-400'"
+                           x-text="name && name.trim() ? name : 'Untitled release'"></p>
+                    </div>
+
+                    <dl class="space-y-3">
+                        <div class="flex items-center justify-between gap-3">
+                            <dt class="text-slate-500">Project</dt>
+                            <dd>
+                                <template x-if="projectName">
+                                    <span class="inline-flex items-center gap-1.5 font-medium text-slate-800">
+                                        <span class="h-2.5 w-2.5 rounded-full" :style="`background-color:${projectColor}`"></span>
+                                        <span x-text="projectName"></span>
+                                    </span>
+                                </template>
+                                <template x-if="!projectName"><span class="text-slate-400">Not set</span></template>
+                            </dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-3">
+                            <dt class="text-slate-500">Team</dt>
+                            <dd>
+                                <template x-if="teamName">
+                                    <span class="inline-flex items-center gap-1.5 font-medium text-slate-800">
+                                        <span class="h-2.5 w-2.5 rounded-full" :style="`background-color:${teamColor}`"></span>
+                                        <span x-text="teamName"></span>
+                                    </span>
+                                </template>
+                                <template x-if="!teamName"><span class="text-slate-400">Not set</span></template>
+                            </dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-3">
+                            <dt class="text-slate-500">Window</dt>
+                            <dd class="text-right font-medium text-slate-800">
+                                <template x-if="hasWindow"><span x-text="fmtRange()"></span></template>
+                                <template x-if="!hasWindow"><span class="font-normal text-slate-400">Not set</span></template>
+                            </dd>
+                        </div>
+                        <div class="flex items-center justify-between gap-3" x-show="hasWindow" x-cloak>
+                            <dt class="text-slate-500">Working days</dt>
+                            <dd class="font-medium text-slate-800">
+                                <span x-text="workingDays"></span><span class="font-normal text-slate-400"> / <span x-text="totalDays"></span></span>
+                            </dd>
+                        </div>
+                    </dl>
+
+                    {{-- Mini phase timeline --}}
+                    <div x-show="hasWindow" x-cloak>
+                        <p class="eyebrow mb-1.5">Timeline</p>
+                        <div class="relative h-2.5 w-full overflow-hidden rounded bg-slate-100 ring-1 ring-inset ring-slate-200">
+                            <template x-for="seg in segments()" :key="seg.key">
+                                <div class="absolute top-0 h-2.5" :style="`left:${seg.left}%;width:${seg.width}%;background-color:${seg.color}`" :title="seg.label"></div>
+                            </template>
+                        </div>
+                    </div>
+
+                    {{-- Members --}}
+                    <div>
+                        <p class="eyebrow mb-1.5">Members (<span x-text="selectedMembers.length"></span>)</p>
+                        <template x-if="selectedMembers.length">
+                            <div class="flex flex-wrap gap-1.5">
+                                <template x-for="m in selectedMembers" :key="m.id">
+                                    <span class="inline-flex items-center rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700" x-text="m.name"></span>
+                                </template>
+                            </div>
+                        </template>
+                        <template x-if="!selectedMembers.length">
+                            <p class="text-xs text-slate-400">No members selected yet.</p>
+                        </template>
+                    </div>
+                </div>
+            </section>
+
+            {{-- Checklist (live, follows the form order) --}}
+            <section class="card overflow-hidden">
+                <div class="card-header">
+                    <h3 class="text-sm font-semibold text-slate-800">Checklist</h3>
+                    <span class="text-xs font-medium text-slate-400"><span x-text="stepsDone"></span>/<span x-text="steps.length"></span></span>
+                </div>
+                <ul class="divide-y divide-slate-100">
+                    <template x-for="step in steps" :key="step.label">
+                        <li class="flex items-center gap-3 px-5 py-2.5 text-sm sm:px-6">
+                            <span class="flex h-5 w-5 flex-none items-center justify-center rounded-full"
+                                  :class="step.done ? 'bg-emerald-100 text-emerald-600' : 'bg-slate-100 text-slate-300'">
+                                <svg class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0l-3.5-3.5a1 1 0 111.4-1.4l2.8 2.79 6.8-6.79a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                            </span>
+                            <span :class="step.done ? 'font-medium text-slate-700' : 'text-slate-500'" x-text="step.label"></span>
+                            <span x-show="step.optional" class="ml-auto text-[11px] uppercase tracking-wide text-slate-300">optional</span>
+                        </li>
+                    </template>
+                </ul>
+            </section>
+
+            {{-- Tips (static) --}}
+            <section class="card card-pad">
+                <h3 class="text-sm font-semibold text-slate-800">Tips</h3>
+                <ul class="mt-2 list-disc space-y-1.5 pl-4 text-xs text-slate-500">
+                    <li>Phases must sit inside the overall window — use <span class="font-medium text-slate-600">Auto-split evenly</span> to seed them.</li>
+                    <li>Off-days reduce the working-day count but don't block scheduling.</li>
+                    <li>Members are drawn from the owning team — add people on the team page first.</li>
+                </ul>
+            </section>
+
+        </div>
+    </aside>
+    </div>{{-- /grid --}}
 </div>
 
 <script>
@@ -322,6 +454,40 @@
             teamId: config.teamId || null,
             teamMembers: config.teamMembers || {},
             selected: config.selected || [],
+            name: config.name || '',
+            year: config.year || null,
+            quarter: config.quarter || null,
+            projectId: config.projectId || null,
+            projectMap: config.projectMap || {},
+            teamMap: config.teamMap || {},
+
+            get projectName() { return (this.projectMap[this.projectId] || {}).name || null; },
+            get projectColor() { return (this.projectMap[this.projectId] || {}).color || '#cbd5e1'; },
+            get teamName() { return (this.teamMap[this.teamId] || {}).name || null; },
+            get teamColor() { return (this.teamMap[this.teamId] || {}).color || '#cbd5e1'; },
+            get selectedMembers() {
+                return (this.teamMembers[this.teamId] || []).filter((m) => this.selected.includes(m.id));
+            },
+            get phasesComplete() {
+                return this.phaseKeys.every((k) => this.phases[k] && this.phases[k].start && this.phases[k].end);
+            },
+            get steps() {
+                return [
+                    { label: 'Name & quarter', done: !!(this.name && this.name.trim() && this.year && this.quarter) },
+                    { label: 'Project', done: !!this.projectId },
+                    { label: 'Owning team', done: !!this.teamId },
+                    { label: 'Members', done: this.selected.length > 0, optional: true },
+                    { label: 'Overall window', done: this.hasWindow },
+                    { label: 'Phase dates', done: this.phasesComplete },
+                ];
+            },
+            get stepsDone() { return this.steps.filter((s) => s.done).length; },
+            fmtRange() {
+                if (!this.hasWindow) return '';
+                const s = parse(this.start).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+                const e = parse(this.end).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+                return s + ' – ' + e;
+            },
 
             get hasWindow() {
                 return !!(this.start && this.end && diff(this.start, this.end) >= 0);

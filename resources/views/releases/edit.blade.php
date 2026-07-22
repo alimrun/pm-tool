@@ -22,7 +22,7 @@
 
     <div class="py-6 sm:py-8">
         <div class="app-container">
-            <div class="max-w-4xl space-y-4">
+            <div class="space-y-4">
                 <form method="POST" action="{{ route('releases.update', $release) }}">
                     @csrf @method('PUT')
                     @include('releases.form')

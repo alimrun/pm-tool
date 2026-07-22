@@ -12,7 +12,7 @@
 
     <div class="py-6 sm:py-8">
         <div class="app-container">
-            <form method="POST" action="{{ route('releases.store') }}" class="max-w-4xl">
+            <form method="POST" action="{{ route('releases.store') }}">
                 @csrf
                 @include('releases.form')
 
