@@ -16,6 +16,12 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('board.index')" :active="request()->routeIs('board.*')">
+                        {{ __('Board') }}
+                    </x-nav-link>
+                    <x-nav-link :href="route('calendar.index')" :active="request()->routeIs('calendar.*') || request()->routeIs('events.*')">
+                        {{ __('Calendar') }}
+                    </x-nav-link>
                     <x-nav-link :href="route('projects.index')" :active="request()->routeIs('projects.*')">
                         {{ __('Projects') }}
                     </x-nav-link>
@@ -25,6 +31,11 @@
                     <x-nav-link :href="route('activity.index')" :active="request()->routeIs('activity.*')">
                         {{ __('Activity') }}
                     </x-nav-link>
+                    @if (auth()->user()->canManageUsers())
+                        <x-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                            {{ __('Users') }}
+                        </x-nav-link>
+                    @endif
                 </div>
             </div>
 
@@ -36,10 +47,8 @@
                         <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/></svg>
                         New release
                     </a>
-                    <span class="rounded-full bg-indigo-50 px-2.5 py-0.5 text-xs font-medium text-indigo-700">Admin</span>
-                @else
-                    <span class="rounded-full bg-gray-100 px-2.5 py-0.5 text-xs font-medium text-gray-600">Viewer</span>
                 @endif
+                @include('partials.role-badge', ['role' => auth()->user()->role])
 
                 <x-dropdown align="right" width="48">
                     <x-slot name="trigger">
@@ -91,6 +100,12 @@
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('board.index')" :active="request()->routeIs('board.*')">
+                {{ __('Board') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('calendar.index')" :active="request()->routeIs('calendar.*') || request()->routeIs('events.*')">
+                {{ __('Calendar') }}
+            </x-responsive-nav-link>
             @if (auth()->user()->isAdmin())
                 <x-responsive-nav-link :href="route('releases.create')" :active="request()->routeIs('releases.*')">
                     {{ __('New Release') }}
@@ -105,6 +120,11 @@
             <x-responsive-nav-link :href="route('activity.index')" :active="request()->routeIs('activity.*')">
                 {{ __('Activity') }}
             </x-responsive-nav-link>
+            @if (auth()->user()->canManageUsers())
+                <x-responsive-nav-link :href="route('users.index')" :active="request()->routeIs('users.*')">
+                    {{ __('Users') }}
+                </x-responsive-nav-link>
+            @endif
         </div>
 
         <!-- Responsive Settings Options -->
@@ -112,7 +132,7 @@
             <div class="px-4">
                 <div class="font-medium text-base text-gray-800">{{ Auth::user()->name }}</div>
                 <div class="font-medium text-sm text-gray-500">{{ Auth::user()->email }}</div>
-                <div class="mt-1 text-xs font-medium text-indigo-600">{{ ucfirst(Auth::user()->role) }}</div>
+                <div class="mt-1 text-xs font-medium text-indigo-600">{{ Auth::user()->roleLabel() }}</div>
             </div>
 
             <div class="mt-3 space-y-1">

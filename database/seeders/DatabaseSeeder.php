@@ -30,6 +30,16 @@ class DatabaseSeeder extends Seeder
             ['name' => 'Viewer User', 'password' => Hash::make('password'), 'role' => User::ROLE_VIEWER, 'email_verified_at' => now()]
         );
 
+        // Additional roles (all log in with password `password`).
+        User::updateOrCreate(['email' => 'cto@example.com'],
+            ['name' => 'Casey CTO', 'password' => Hash::make('password'), 'role' => User::ROLE_CTO, 'email_verified_at' => now()]);
+        User::updateOrCreate(['email' => 'lead@example.com'],
+            ['name' => 'Lee Lead', 'password' => Hash::make('password'), 'role' => User::ROLE_TEAM_LEAD, 'email_verified_at' => now()]);
+        User::updateOrCreate(['email' => 'dev@example.com'],
+            ['name' => 'Devin Dev', 'password' => Hash::make('password'), 'role' => User::ROLE_DEVELOPER, 'email_verified_at' => now()]);
+        User::updateOrCreate(['email' => 'qa@example.com'],
+            ['name' => 'Quinn QA', 'password' => Hash::make('password'), 'role' => User::ROLE_QA, 'email_verified_at' => now()]);
+
         // --- Projects ----------------------------------------------------
         $checkout = Project::create(['name' => 'Checkout', 'color' => '#4f46e5', 'description' => 'Storefront checkout & payments.']);
         $mobile = Project::create(['name' => 'Mobile App', 'color' => '#10b981', 'description' => 'iOS & Android apps.']);
@@ -82,6 +92,27 @@ class DatabaseSeeder extends Seeder
             }
             $cursor->addDay();
         }
+
+        // --- Calendar events --------------------------------------------
+        $kickoff = \App\Models\Event::create([
+            'title' => 'Checkout v2.4 kickoff', 'type' => 'meeting',
+            'starts_at' => "$year-07-10 10:00:00", 'ends_at' => "$year-07-10 11:00:00",
+            'location' => 'Room 4 / Zoom', 'release_id' => $r1->id, 'created_by' => $admin->id,
+            'description' => 'Walk through scope and assign owners.',
+        ]);
+        $kickoff->attendees()->sync([$admin->id, $viewer->id]);
+
+        \App\Models\Event::create([
+            'title' => 'QA review', 'type' => 'review',
+            'starts_at' => "$year-07-24 14:00:00", 'ends_at' => "$year-07-24 15:00:00",
+            'release_id' => $r1->id, 'created_by' => $admin->id,
+        ])->attendees()->sync([$admin->id]);
+
+        \App\Models\Event::create([
+            'title' => 'Checkout v2.4 release day', 'type' => 'release', 'all_day' => true,
+            'starts_at' => "$year-07-29 00:00:00", 'ends_at' => "$year-07-30 23:59:59",
+            'release_id' => $r1->id, 'created_by' => $admin->id,
+        ]);
     }
 
     private function makeRelease(Project $project, Team $team, string $name, int $year, int $quarter, string $start, string $end, ?string $description = null): Release

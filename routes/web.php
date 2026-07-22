@@ -1,7 +1,10 @@
 <?php
 
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\BoardController;
+use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\EventController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
@@ -10,6 +13,7 @@ use App\Http\Controllers\ReleaseDocumentController;
 use App\Http\Controllers\ReleaseOffDayController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamController;
+use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('dashboard'));
@@ -95,8 +99,34 @@ Route::middleware('auth')->group(function () {
     Route::put('comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
     Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
 
+    // Kanban board
+    Route::get('board', [BoardController::class, 'index'])->name('board.index');
+    Route::patch('board/tasks/{task}', [BoardController::class, 'move'])->name('board.move');
+
+    // Calendar & events (any authenticated user creates; creator/admin edits)
+    Route::get('calendar', [CalendarController::class, 'index'])->name('calendar.index');
+    Route::get('events/create', [EventController::class, 'create'])->name('events.create');
+    Route::post('events', [EventController::class, 'store'])->name('events.store');
+    Route::get('events/{event}', [EventController::class, 'show'])->name('events.show');
+    Route::get('events/{event}/edit', [EventController::class, 'edit'])->name('events.edit');
+    Route::put('events/{event}', [EventController::class, 'update'])->name('events.update');
+    Route::delete('events/{event}', [EventController::class, 'destroy'])->name('events.destroy');
+
     // Activity feed
     Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
+
+    /*
+     | User management — Admins and CTOs only.
+     */
+    Route::middleware('manage-users')->group(function () {
+        Route::get('users', [UserController::class, 'index'])->name('users.index');
+        Route::get('users/create', [UserController::class, 'create'])->name('users.create');
+        Route::post('users', [UserController::class, 'store'])->name('users.store');
+        Route::get('users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
+        Route::put('users/{user}', [UserController::class, 'update'])->name('users.update');
+        Route::post('users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle');
+        Route::delete('users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+    });
 
     // Profile (Breeze)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

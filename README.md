@@ -23,15 +23,23 @@ proposal, specs, design, and task list this implementation follows.
   author or admin can edit/delete.
 - **Off-days** — mark non-working days within a release window (with a reason and a "mark
   weekends" helper); shown on the timeline and used for a working-day count.
+- **Kanban board** — a Trello-style board with To Do / In Progress / In Review / Done columns;
+  drag cards to change status and reorder them. Available globally and per-release, filterable
+  by release and assignee.
+- **Calendar** — a month view of events (Meeting / Review / Deadline / Release / Other) with
+  attendees and optional release links. Any signed-in user adds events; the creator or an admin
+  edits/deletes.
 - **Activity log** — an attributable, app-wide history of every create/update/delete (with
   who, what changed old → new, and when), on a global **Activity** page and a per-release
   history panel.
 - **Projects & Teams** — CRUD with colors; archive when they have releases, hard-delete when empty.
 - **Documents** — upload/list/download/delete files per release (max 20 MB; pdf, doc(x), xls(x),
   ppt(x), txt, csv, png, jpg, zip).
-- **Roles** — `admin` manages structure (projects, teams, releases, off-days, documents);
-  **any signed-in user (incl. `viewer`) can collaborate on tasks and comments**. Enforced by
-  middleware and policies, not just hidden buttons.
+- **Users & roles** — six roles: **Admin, CTO, Team Lead, Developer, QA, Viewer**. Only Admin
+  manages structure (projects, teams, releases, off-days, documents); **Admin + CTO** manage
+  user accounts (create, set role, reset password, deactivate); **every signed-in user
+  collaborates** on tasks, comments, board, and calendar. Self-registration is disabled and
+  deactivated accounts cannot log in. Enforced by middleware and policies, not just hidden buttons.
 
 ## Requirements
 
@@ -56,10 +64,17 @@ Open http://127.0.0.1:8000 and log in.
 
 ### Demo logins (from the seeder)
 
-| Role   | Email                | Password   |
-| ------ | -------------------- | ---------- |
-| Admin  | `admin@example.com`  | `password` |
-| Viewer | `viewer@example.com` | `password` |
+All demo accounts use the password `password`. Accounts are created by an Admin/CTO in
+**Users** — there is no public sign-up.
+
+| Role      | Email                |
+| --------- | -------------------- |
+| Admin     | `admin@example.com`  |
+| CTO       | `cto@example.com`    |
+| Team Lead | `lead@example.com`   |
+| Developer | `dev@example.com`    |
+| QA        | `qa@example.com`     |
+| Viewer    | `viewer@example.com` |
 
 The seed data includes a deliberate same-team overlap (**Team Alpha** — *Checkout v2.4* Jul 10–30
 and *Billing hotfix* Jul 20–Aug 5) so the conflict warning and amber highlight are visible

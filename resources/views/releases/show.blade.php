@@ -148,8 +148,13 @@
 
             {{-- Tasks --}}
             <div class="rounded-xl bg-white shadow">
-                <div class="border-b border-gray-100 px-6 py-4">
+                <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
                     <h3 class="text-sm font-semibold text-gray-700">Tasks ({{ $release->rootTasks->count() }})</h3>
+                    <a href="{{ route('board.index', ['release_id' => $release->id]) }}"
+                       class="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-800">
+                        <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M3 4a1 1 0 011-1h3a1 1 0 011 1v12a1 1 0 01-1 1H4a1 1 0 01-1-1V4zm6 0a1 1 0 011-1h3a1 1 0 011 1v7a1 1 0 01-1 1h-3a1 1 0 01-1-1V4z"/></svg>
+                        Board view
+                    </a>
                 </div>
                 <div class="p-6">
                     @include('partials.tasks-panel', ['release' => $release, 'users' => $users])
