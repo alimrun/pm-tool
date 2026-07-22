@@ -1,10 +1,14 @@
 <?php
 
+use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\CommentController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReleaseController;
 use App\Http\Controllers\ReleaseDocumentController;
+use App\Http\Controllers\ReleaseOffDayController;
+use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamController;
 use Illuminate\Support\Facades\Route;
 
@@ -49,6 +53,15 @@ Route::middleware('auth')->group(function () {
         Route::delete('releases/{release}/documents/{document}', [ReleaseDocumentController::class, 'destroy'])
             ->name('releases.documents.destroy')
             ->scopeBindings();
+
+        // Off-days are part of the plan → admin-managed.
+        Route::post('releases/{release}/off-days', [ReleaseOffDayController::class, 'store'])
+            ->name('releases.offdays.store');
+        Route::post('releases/{release}/off-days/weekends', [ReleaseOffDayController::class, 'markWeekends'])
+            ->name('releases.offdays.weekends');
+        Route::delete('releases/{release}/off-days/{offDay}', [ReleaseOffDayController::class, 'destroy'])
+            ->name('releases.offdays.destroy')
+            ->scopeBindings();
     });
 
     /*
@@ -64,6 +77,26 @@ Route::middleware('auth')->group(function () {
     Route::get('releases/{release}/documents/{document}', [ReleaseDocumentController::class, 'download'])
         ->name('releases.documents.download')
         ->scopeBindings();
+
+    /*
+     | Collaboration — any authenticated user (admin or viewer) may participate.
+     */
+    // Tasks & subtasks
+    Route::post('releases/{release}/tasks', [TaskController::class, 'store'])->name('releases.tasks.store');
+    Route::post('tasks/{task}/subtasks', [TaskController::class, 'storeSubtask'])->name('tasks.subtasks.store');
+    Route::get('tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
+    Route::put('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
+    Route::patch('tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status');
+    Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
+
+    // Comments (polymorphic: releases + tasks)
+    Route::post('releases/{release}/comments', [CommentController::class, 'storeForRelease'])->name('releases.comments.store');
+    Route::post('tasks/{task}/comments', [CommentController::class, 'storeForTask'])->name('tasks.comments.store');
+    Route::put('comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
+    Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
+
+    // Activity feed
+    Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
 
     // Profile (Breeze)
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

@@ -2,15 +2,19 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RecordsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\Storage;
 
 class Release extends Model
 {
+    use RecordsActivity;
+
     protected $fillable = [
-        'project_id', 'team_id', 'name', 'year', 'quarter', 'start_date', 'end_date',
+        'project_id', 'team_id', 'name', 'description', 'year', 'quarter', 'start_date', 'end_date',
     ];
 
     protected function casts(): array
@@ -49,12 +53,16 @@ class Release extends Model
 
     protected static function booted(): void
     {
-        // DB-level cascade removes phase/document rows, but stored files must be
-        // cleaned up explicitly since the cascade bypasses Eloquent events.
         static::deleting(function (Release $release) {
+            // Stored files must be cleaned explicitly (DB cascade bypasses Eloquent).
             foreach ($release->documents as $document) {
                 Storage::disk('local')->delete($document->path);
             }
+
+            // Delete root tasks via Eloquent so their (and subtasks') polymorphic
+            // comments are cleaned up; then remove the release's own comments.
+            $release->rootTasks()->get()->each->delete();
+            $release->comments()->delete();
         });
     }
 
@@ -78,6 +86,27 @@ class Release extends Model
         return $this->hasMany(ReleaseDocument::class)->latest();
     }
 
+    public function tasks(): HasMany
+    {
+        return $this->hasMany(Task::class);
+    }
+
+    /** Top-level tasks (not subtasks). */
+    public function rootTasks(): HasMany
+    {
+        return $this->hasMany(Task::class)->whereNull('parent_id')->orderBy('position')->orderBy('id');
+    }
+
+    public function offDays(): HasMany
+    {
+        return $this->hasMany(ReleaseOffDay::class)->orderBy('date');
+    }
+
+    public function comments(): MorphMany
+    {
+        return $this->morphMany(Comment::class, 'commentable')->oldest();
+    }
+
     public function quarterLabel(): string
     {
         return 'Q'.$this->quarter;
@@ -86,5 +115,25 @@ class Release extends Model
     public function durationInDays(): int
     {
         return $this->start_date->diffInDays($this->end_date) + 1;
+    }
+
+    public function offDayCount(): int
+    {
+        return $this->offDays()->count();
+    }
+
+    public function workingDays(): int
+    {
+        return max($this->durationInDays() - $this->offDayCount(), 0);
+    }
+
+    public function activityTitle(): string
+    {
+        return $this->name;
+    }
+
+    public function activityReleaseId(): ?int
+    {
+        return $this->getKey();
     }
 }

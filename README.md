@@ -15,13 +15,23 @@ proposal, specs, design, and task list this implementation follows.
   phase segments. Filter by year, quarter, project, and team; group by team or project.
 - **Overlap detection** — when a team's releases overlap, they are **warned on save** (never
   blocked) and **highlighted in amber** on the dashboard, team page, and release page.
-- **Releases** — project, owning team, quarter/year, overall window, and four phase date ranges
-  (with an "auto-split window evenly" helper).
+- **Releases** — project, owning team, quarter/year, overall window, an optional **description**,
+  and four phase date ranges (with an "auto-split window evenly" helper).
+- **Tasks & subtasks** — each release has tasks with status (To Do / In Progress / In Review /
+  Done), assignee, due date, and an optional phase link; one level of subtasks with progress.
+- **Comments** — threaded comments on both releases and tasks, attributed to their author;
+  author or admin can edit/delete.
+- **Off-days** — mark non-working days within a release window (with a reason and a "mark
+  weekends" helper); shown on the timeline and used for a working-day count.
+- **Activity log** — an attributable, app-wide history of every create/update/delete (with
+  who, what changed old → new, and when), on a global **Activity** page and a per-release
+  history panel.
 - **Projects & Teams** — CRUD with colors; archive when they have releases, hard-delete when empty.
 - **Documents** — upload/list/download/delete files per release (max 20 MB; pdf, doc(x), xls(x),
   ppt(x), txt, csv, png, jpg, zip).
-- **Roles** — `admin` (full CRUD) and `viewer` (read-only). Write routes are enforced by
-  middleware, not just hidden buttons.
+- **Roles** — `admin` manages structure (projects, teams, releases, off-days, documents);
+  **any signed-in user (incl. `viewer`) can collaborate on tasks and comments**. Enforced by
+  middleware and policies, not just hidden buttons.
 
 ## Requirements
 
@@ -85,10 +95,15 @@ the overlap warning, and role gating (feature).
 ## Architecture notes
 
 - **Domain model:** `Project`, `Team`, `Release` (belongs to one project + one team), `ReleasePhase`
-  (four ordered rows per release), `ReleaseDocument`.
+  (four ordered rows per release), `ReleaseDocument`, `Task` (self-referencing `parent_id` for one
+  level of subtasks), `Comment` (polymorphic — releases + tasks), `ReleaseOffDay`, `Activity`.
 - **`App\Services\OverlapChecker`** is the single definition of "two same-team windows overlap,"
   reused by the save-time warning and the dashboard highlight.
 - **`App\Support\Timeline`** does pure date→percent math for the timeline (offset/width, clipping,
   month columns) and is unit-tested independently of the database.
-- **`admin` middleware** (`App\Http\Middleware\EnsureUserIsAdmin`) guards every write route; Blade
-  additionally hides write controls from viewers.
+- **`App\Models\Concerns\RecordsActivity`** is a lightweight in-app audit trait (no external
+  package) added to auditable models; it records create/update/delete with the causer and, for
+  updates, old → new values, denormalizing a `release_id` for fast per-release history.
+- **Permissions:** the `admin` middleware (`EnsureUserIsAdmin`) guards structural write routes;
+  task/comment routes sit under `auth` so any signed-in user can collaborate; `CommentPolicy`
+  limits comment edit/delete to the author or an admin.

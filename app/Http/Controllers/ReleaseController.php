@@ -3,9 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\ReleaseRequest;
+use App\Models\Activity;
 use App\Models\Project;
 use App\Models\Release;
 use App\Models\Team;
+use App\Models\User;
 use App\Services\OverlapChecker;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Facades\DB;
@@ -34,7 +36,7 @@ class ReleaseController extends Controller
     {
         $release = DB::transaction(function () use ($request) {
             $release = Release::create($request->safe()->only([
-                'project_id', 'team_id', 'name', 'year', 'quarter', 'start_date', 'end_date',
+                'project_id', 'team_id', 'name', 'description', 'year', 'quarter', 'start_date', 'end_date',
             ]));
             $this->syncPhases($release, $request->input('phases', []));
 
@@ -48,7 +50,12 @@ class ReleaseController extends Controller
 
     public function show(Release $release): View
     {
-        $release->load(['project', 'team', 'phases', 'documents.uploader']);
+        $release->load([
+            'project', 'team', 'phases', 'documents.uploader',
+            'rootTasks.subtasks.assignee', 'rootTasks.assignee', 'rootTasks.comments',
+            'offDays', 'comments.user',
+        ]);
+
         $conflicts = $this->overlap->conflictsFor(
             $release->team_id,
             $release->start_date->toDateString(),
@@ -56,7 +63,18 @@ class ReleaseController extends Controller
             $release->id
         );
 
-        return view('releases.show', compact('release', 'conflicts'));
+        $history = Activity::where('release_id', $release->id)
+            ->with('causer')
+            ->latest()
+            ->limit(40)
+            ->get();
+
+        return view('releases.show', [
+            'release' => $release,
+            'conflicts' => $conflicts,
+            'history' => $history,
+            'users' => User::orderBy('name')->get(),
+        ]);
     }
 
     public function edit(Release $release): View
@@ -75,7 +93,7 @@ class ReleaseController extends Controller
     {
         DB::transaction(function () use ($request, $release) {
             $release->update($request->safe()->only([
-                'project_id', 'team_id', 'name', 'year', 'quarter', 'start_date', 'end_date',
+                'project_id', 'team_id', 'name', 'description', 'year', 'quarter', 'start_date', 'end_date',
             ]));
             $this->syncPhases($release, $request->input('phases', []));
         });

@@ -40,26 +40,45 @@
                 </div>
             @endif
 
-            {{-- Phase timeline for this release --}}
+            @if ($release->description)
+                <div class="rounded-xl bg-white p-6 shadow">
+                    <h3 class="text-sm font-semibold text-gray-700">Description</h3>
+                    <p class="mt-2 whitespace-pre-line text-sm text-gray-600">{{ $release->description }}</p>
+                </div>
+            @endif
+
+            {{-- Phase timeline + off-days --}}
             <div class="rounded-xl bg-white p-6 shadow">
-                <div class="flex items-center justify-between">
+                <div class="flex flex-wrap items-center justify-between gap-2">
                     <h3 class="text-sm font-semibold text-gray-700">Timeline</h3>
-                    <span class="text-sm text-gray-500">{{ $release->start_date->format('M j, Y') }} – {{ $release->end_date->format('M j, Y') }} · {{ $release->durationInDays() }} days</span>
+                    <span class="text-sm text-gray-500">
+                        {{ $release->start_date->format('M j, Y') }} – {{ $release->end_date->format('M j, Y') }}
+                        · {{ $release->durationInDays() }} days
+                        · <span class="font-medium text-gray-700">{{ $release->workingDays() }} working</span>
+                        @if ($release->offDayCount()) · {{ $release->offDayCount() }} off @endif
+                    </span>
                 </div>
 
                 @php $total = max($release->durationInDays(), 1); @endphp
-                <div class="mt-4 space-y-2">
-                    <div class="relative h-9 w-full rounded-md bg-gray-100">
+                <div class="mt-4">
+                    <div class="relative h-9 w-full overflow-hidden rounded-md bg-gray-100">
                         @foreach ($release->phases as $phase)
                             @php
                                 $offset = $release->start_date->diffInDays($phase->start_date) / $total * 100;
                                 $width = ($phase->start_date->diffInDays($phase->end_date) + 1) / $total * 100;
                             @endphp
-                            <div class="absolute top-0 flex h-9 items-center justify-center overflow-hidden rounded-md text-[11px] font-medium text-white"
+                            <div class="absolute top-0 flex h-9 items-center justify-center overflow-hidden text-[11px] font-medium text-white"
                                  style="left: {{ $offset }}%; width: {{ $width }}%; background-color: {{ \App\Models\Release::PHASE_COLORS[$phase->phase] }}"
                                  title="{{ $phase->label() }}: {{ $phase->start_date->format('M j') }} – {{ $phase->end_date->format('M j') }}">
                                 <span class="truncate px-1">{{ $phase->label() }}</span>
                             </div>
+                        @endforeach
+                        {{-- off-day ticks (drawn on top) --}}
+                        @foreach ($release->offDays as $off)
+                            @php $o = $release->start_date->diffInDays($off->date) / $total * 100; @endphp
+                            <div class="absolute top-0 z-10 h-9 bg-gray-900/25"
+                                 style="left: {{ $o }}%; width: {{ 1 / $total * 100 }}%"
+                                 title="Off: {{ $off->date->format('M j, Y') }}{{ $off->reason ? ' — '.$off->reason : '' }}"></div>
                         @endforeach
                     </div>
                 </div>
@@ -74,6 +93,76 @@
                             <p class="mt-1 text-xs text-gray-500">{{ $phase->start_date->format('M j') }} – {{ $phase->end_date->format('M j, Y') }}</p>
                         </div>
                     @endforeach
+                </div>
+            </div>
+
+            {{-- Off-days management --}}
+            <div class="rounded-xl bg-white shadow">
+                <div class="flex items-center justify-between border-b border-gray-100 px-6 py-4">
+                    <h3 class="text-sm font-semibold text-gray-700">Off-days ({{ $release->offDays->count() }})</h3>
+                    @if (auth()->user()->isAdmin())
+                        <form method="POST" action="{{ route('releases.offdays.weekends', $release) }}">
+                            @csrf
+                            <button class="text-xs font-medium text-indigo-600 hover:text-indigo-800">Mark weekends off</button>
+                        </form>
+                    @endif
+                </div>
+
+                @if (auth()->user()->isAdmin())
+                    <form method="POST" action="{{ route('releases.offdays.store', $release) }}"
+                          class="flex flex-wrap items-end gap-3 border-b border-gray-100 px-6 py-4">
+                        @csrf
+                        <div>
+                            <label class="block text-xs font-medium text-gray-500">Date</label>
+                            <input type="date" name="date" required min="{{ $release->start_date->toDateString() }}" max="{{ $release->end_date->toDateString() }}"
+                                   class="mt-1 rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <div class="flex-1">
+                            <label class="block text-xs font-medium text-gray-500">Reason (optional)</label>
+                            <input type="text" name="reason" placeholder="Holiday, team off-site…"
+                                   class="mt-1 block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        </div>
+                        <button class="rounded-md bg-indigo-600 px-3 py-2 text-sm font-medium text-white hover:bg-indigo-700">Mark off-day</button>
+                    </form>
+                @endif
+
+                @if ($release->offDays->isEmpty())
+                    <div class="px-6 py-6 text-center text-sm text-gray-400">No off-days marked. Working days = full window.</div>
+                @else
+                    <ul class="flex flex-wrap gap-2 px-6 py-4">
+                        @foreach ($release->offDays as $off)
+                            <li class="inline-flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 text-xs text-gray-700">
+                                <span class="font-medium">{{ $off->date->format('D, M j') }}</span>
+                                @if ($off->reason)<span class="text-gray-400">· {{ $off->reason }}</span>@endif
+                                @if (auth()->user()->isAdmin())
+                                    <form method="POST" action="{{ route('releases.offdays.destroy', [$release, $off]) }}">
+                                        @csrf @method('DELETE')
+                                        <button class="text-gray-400 hover:text-rose-600" title="Remove">✕</button>
+                                    </form>
+                                @endif
+                            </li>
+                        @endforeach
+                    </ul>
+                @endif
+            </div>
+
+            {{-- Tasks --}}
+            <div class="rounded-xl bg-white shadow">
+                <div class="border-b border-gray-100 px-6 py-4">
+                    <h3 class="text-sm font-semibold text-gray-700">Tasks ({{ $release->rootTasks->count() }})</h3>
+                </div>
+                <div class="p-6">
+                    @include('partials.tasks-panel', ['release' => $release, 'users' => $users])
+                </div>
+            </div>
+
+            {{-- Comments --}}
+            <div class="rounded-xl bg-white shadow">
+                <div class="border-b border-gray-100 px-6 py-4">
+                    <h3 class="text-sm font-semibold text-gray-700">Comments ({{ $release->comments->count() }})</h3>
+                </div>
+                <div class="p-6">
+                    @include('partials.comments', ['comments' => $release->comments, 'storeUrl' => route('releases.comments.store', $release)])
                 </div>
             </div>
 
@@ -123,6 +212,17 @@
                         @endforeach
                     </ul>
                 @endif
+            </div>
+
+            {{-- History --}}
+            <div class="rounded-xl bg-white shadow" x-data="{ open: false }">
+                <button type="button" @click="open = !open" class="flex w-full items-center justify-between px-6 py-4 text-left">
+                    <h3 class="text-sm font-semibold text-gray-700">History ({{ $history->count() }})</h3>
+                    <span class="text-xs text-gray-400" x-text="open ? 'Hide' : 'Show'">Show</span>
+                </button>
+                <div x-show="open" x-cloak class="divide-y divide-gray-100 border-t border-gray-100 px-6 py-2">
+                    @include('partials.activity-list', ['activities' => $history])
+                </div>
             </div>
         </div>
     </div>

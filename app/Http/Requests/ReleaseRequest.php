@@ -21,6 +21,7 @@ class ReleaseRequest extends FormRequest
             'project_id' => ['required', Rule::exists('projects', 'id')],
             'team_id' => ['required', Rule::exists('teams', 'id')],
             'name' => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:5000'],
             'year' => ['required', 'integer', 'min:2000', 'max:2100'],
             'quarter' => ['required', 'integer', 'between:1,4'],
             'start_date' => ['required', 'date'],
