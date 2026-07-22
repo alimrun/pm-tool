@@ -10,6 +10,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReleaseController;
 use App\Http\Controllers\ReleaseDocumentController;
+use App\Http\Controllers\MeetingNoteController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\ReleaseOffDayController;
 use App\Http\Controllers\TaskController;
@@ -134,6 +135,15 @@ Route::middleware('auth')->group(function () {
     Route::post('notes', [NoteController::class, 'store'])->name('notes.store');
     Route::put('notes/{note}', [NoteController::class, 'update'])->name('notes.update');
     Route::delete('notes/{note}', [NoteController::class, 'destroy'])->name('notes.destroy');
+
+    // Meeting notes (release-wise or general; author edits, author/admin deletes)
+    Route::get('meeting-notes', [MeetingNoteController::class, 'index'])->name('meeting-notes.index');
+    Route::get('meeting-notes/create', [MeetingNoteController::class, 'create'])->name('meeting-notes.create');
+    Route::post('meeting-notes', [MeetingNoteController::class, 'store'])->name('meeting-notes.store');
+    Route::get('meeting-notes/{meetingNote}', [MeetingNoteController::class, 'show'])->name('meeting-notes.show');
+    Route::get('meeting-notes/{meetingNote}/edit', [MeetingNoteController::class, 'edit'])->name('meeting-notes.edit');
+    Route::put('meeting-notes/{meetingNote}', [MeetingNoteController::class, 'update'])->name('meeting-notes.update');
+    Route::delete('meeting-notes/{meetingNote}', [MeetingNoteController::class, 'destroy'])->name('meeting-notes.destroy');
 
     // Activity feed
     Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');

@@ -152,6 +152,12 @@ class Release extends Model
         return $this->morphMany(Comment::class, 'commentable')->oldest();
     }
 
+    /** Meeting notes linked to this release, newest meeting first. */
+    public function meetingNotes(): HasMany
+    {
+        return $this->hasMany(MeetingNote::class)->orderByDesc('meeting_date')->orderByDesc('id');
+    }
+
     public function quarterLabel(): string
     {
         return 'Q'.$this->quarter;

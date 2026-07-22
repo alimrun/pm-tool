@@ -6,6 +6,7 @@ use App\Models\Concerns\RecordsActivity;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 class Event extends Model
@@ -57,6 +58,17 @@ class Event extends Model
     public function attendees(): BelongsToMany
     {
         return $this->belongsToMany(User::class)->withTimestamps();
+    }
+
+    /** Meeting notes written from this event, newest meeting first. */
+    public function meetingNotes(): HasMany
+    {
+        return $this->hasMany(MeetingNote::class)->orderByDesc('meeting_date')->orderByDesc('id');
+    }
+
+    public function isMeeting(): bool
+    {
+        return $this->type === 'meeting';
     }
 
     public function typeLabel(): string

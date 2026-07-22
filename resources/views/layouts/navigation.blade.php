@@ -6,6 +6,7 @@
         ['label' => 'Board', 'route' => 'board.index', 'patterns' => ['board.*']],
         ['label' => 'Calendar', 'route' => 'calendar.index', 'patterns' => ['calendar.*', 'events.*']],
         ['label' => 'Notes', 'route' => 'notes.index', 'patterns' => ['notes.*']],
+        ['label' => 'Meetings', 'route' => 'meeting-notes.index', 'patterns' => ['meeting-notes.*']],
         ['label' => 'Projects', 'route' => 'projects.index', 'patterns' => ['projects.*']],
         ['label' => 'Teams', 'route' => 'teams.index', 'patterns' => ['teams.*']],
         ['label' => 'Activity', 'route' => 'activity.index', 'patterns' => ['activity.*']],

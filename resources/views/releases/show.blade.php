@@ -136,6 +136,40 @@
                             @include('partials.comments', ['comments' => $release->comments, 'storeUrl' => route('releases.comments.store', $release)])
                         </div>
                     </div>
+
+                    {{-- Meeting notes --}}
+                    <div class="card">
+                        <div class="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+                            <h3 class="text-sm font-semibold text-slate-700">Meeting notes ({{ $release->meetingNotes->count() }})</h3>
+                            <div class="flex items-center gap-3">
+                                @if ($release->meetingNotes->count() > 5)
+                                    <a href="{{ route('meeting-notes.index', ['release' => $release->id]) }}"
+                                       class="text-xs font-medium text-brand-600 hover:text-brand-700">View all</a>
+                                @endif
+                                <a href="{{ route('meeting-notes.create', ['release' => $release->id]) }}" class="btn-secondary btn-sm">New meeting note</a>
+                            </div>
+                        </div>
+                        <div class="p-5 sm:p-6">
+                            @if ($release->meetingNotes->isEmpty())
+                                <p class="text-sm text-slate-400">No meeting notes for this release yet.</p>
+                            @else
+                                <ul class="divide-y divide-slate-100">
+                                    @foreach ($release->meetingNotes->take(5) as $note)
+                                        <li class="py-3 first:pt-0 last:pb-0">
+                                            <a href="{{ route('meeting-notes.show', $note) }}" class="group block">
+                                                <div class="flex items-baseline justify-between gap-3">
+                                                    <span class="text-sm font-medium text-slate-800 group-hover:text-brand-700">{{ $note->title }}</span>
+                                                    <span class="shrink-0 text-xs text-slate-400">{{ $note->meeting_date->format('M j, Y') }}</span>
+                                                </div>
+                                                <p class="mt-0.5 text-xs text-slate-400">{{ $note->author->name ?? 'Unknown' }}</p>
+                                                <p class="mt-1 text-sm text-slate-600">{{ Str::limit(trim(strip_tags($note->body)), 120) }}</p>
+                                            </a>
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+                        </div>
+                    </div>
                 </div>
 
                 {{-- ============ SIDEBAR ============ --}}

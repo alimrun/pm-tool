@@ -58,6 +58,35 @@
                 @endif
             </div>
 
+            @if ($event->isMeeting() || $event->meetingNotes->isNotEmpty())
+                <div class="card card-pad">
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-slate-700">Meeting notes ({{ $event->meetingNotes->count() }})</h3>
+                        @if ($event->isMeeting())
+                            <a href="{{ route('meeting-notes.create', ['event' => $event->id]) }}" class="btn-secondary btn-sm">Write meeting note</a>
+                        @endif
+                    </div>
+                    @if ($event->meetingNotes->isEmpty())
+                        <p class="mt-2 text-sm text-slate-400">No notes from this meeting yet.</p>
+                    @else
+                        <ul class="mt-3 divide-y divide-slate-100">
+                            @foreach ($event->meetingNotes as $note)
+                                <li class="py-3 first:pt-0 last:pb-0">
+                                    <a href="{{ route('meeting-notes.show', $note) }}" class="group block">
+                                        <div class="flex items-baseline justify-between gap-3">
+                                            <span class="text-sm font-medium text-slate-800 group-hover:text-brand-700">{{ $note->title }}</span>
+                                            <span class="shrink-0 text-xs text-slate-400">{{ $note->meeting_date->format('M j, Y') }}</span>
+                                        </div>
+                                        <p class="mt-0.5 text-xs text-slate-400">{{ $note->author->name ?? 'Unknown' }}</p>
+                                        <p class="mt-1 text-sm text-slate-600">{{ Str::limit(trim(strip_tags($note->body)), 120) }}</p>
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
+            @endif
+
             <div class="card card-pad">
                 <h3 class="text-sm font-semibold text-slate-700">Attendees ({{ $event->attendees->count() }})</h3>
                 @if ($event->attendees->isEmpty())

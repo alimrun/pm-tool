@@ -107,7 +107,7 @@ class ReleaseController extends Controller
         $release->load([
             'project', 'team', 'phases', 'documents.uploader',
             'rootTasks.subtasks.assignee', 'rootTasks.assignee', 'rootTasks.comments',
-            'offDays', 'comments.user', 'members',
+            'offDays', 'comments.user', 'members', 'meetingNotes.author',
         ]);
 
         $conflicts = $this->overlap->conflictsFor(

@@ -35,7 +35,7 @@ class EventController extends Controller
 
     public function show(Event $event): View
     {
-        $event->load(['creator', 'release', 'attendees']);
+        $event->load(['creator', 'release', 'attendees', 'meetingNotes.author']);
 
         return view('events.show', compact('event'));
     }
