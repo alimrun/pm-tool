@@ -19,13 +19,15 @@
     </x-slot>
 
     <div class="py-6 sm:py-8">
-        <div class="app-container max-w-3xl space-y-6">
+        <div class="app-container space-y-6">
             {{-- Add a note --}}
             <form method="POST" action="{{ route('notes.store') }}" class="card card-pad">
                 @csrf
                 <input type="hidden" name="date" value="{{ $day->toDateString() }}">
-                <label for="body" class="field-label">Add a note for {{ $day->isToday() ? 'today' : $day->format('M j') }}</label>
-                <textarea id="body" name="body" rows="3" required placeholder="Jot something down…" class="field-textarea">{{ old('body') }}</textarea>
+                <label class="field-label">Add a note for {{ $day->isToday() ? 'today' : $day->format('M j') }}</label>
+                <input id="note-add-body" type="hidden" name="body" value="{{ old('body') }}">
+                <trix-editor input="note-add-body" placeholder="Jot something down…" class="prose-notes"></trix-editor>
+                @error('body') <p class="field-error">{{ $message }}</p> @enderror
                 <div class="mt-3 flex flex-wrap items-center justify-between gap-3">
                     <div class="flex items-center gap-2">
                         <label class="field-label !mt-0 !font-normal text-slate-500">Visibility</label>
@@ -40,11 +42,11 @@
 
             {{-- Notes --}}
             @if ($notes->isEmpty())
-                <div class="card p-10 text-center text-sm text-slate-500">No notes for this day yet.</div>
+                <div class="card p-12 text-center text-sm text-slate-500">No notes for this day yet.</div>
             @else
-                <div class="space-y-3">
+                <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                     @foreach ($notes as $note)
-                        <div class="card card-pad" x-data="{ editing: false }">
+                        <div class="card card-pad flex flex-col" x-data="{ editing: false }">
                             <div class="flex items-start justify-between gap-3">
                                 <div class="flex items-center gap-2">
                                     <span class="flex h-7 w-7 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">
@@ -68,13 +70,14 @@
                                 @endif
                             </div>
 
-                            <div x-show="!editing" class="mt-3 whitespace-pre-line text-sm text-slate-700">{{ $note->body }}</div>
+                            <div x-show="!editing" class="prose-notes mt-3 flex-1 text-sm text-slate-700">{!! $note->bodyHtml() !!}</div>
 
                             @can('update', $note)
                                 <form x-show="editing" x-cloak method="POST" action="{{ route('notes.update', $note) }}" class="mt-3">
                                     @csrf @method('PUT')
                                     <input type="hidden" name="date" value="{{ $note->date->toDateString() }}">
-                                    <textarea name="body" rows="3" required class="field-textarea">{{ $note->body }}</textarea>
+                                    <input id="note-edit-{{ $note->id }}" type="hidden" name="body" value="{{ $note->body }}">
+                                    <trix-editor input="note-edit-{{ $note->id }}" class="prose-notes"></trix-editor>
                                     <div class="mt-2 flex flex-wrap items-center justify-between gap-2">
                                         <select name="visibility" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                                             <option value="private" @selected(! $note->isShared())>Private — only me</option>
@@ -86,7 +89,7 @@
                                         </div>
                                     </div>
                                 </form>
-                                <div x-show="!editing" class="mt-2 flex gap-3">
+                                <div x-show="!editing" class="mt-3 flex gap-3 border-t border-slate-100 pt-3">
                                     <button type="button" @click="editing = true" class="text-xs text-slate-400 transition hover:text-brand-600">Edit</button>
                                     <form method="POST" action="{{ route('notes.destroy', $note) }}" data-confirm="Delete this note?" data-confirm-verb="Delete">
                                         @csrf @method('DELETE')

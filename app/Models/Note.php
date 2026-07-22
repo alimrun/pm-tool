@@ -2,9 +2,12 @@
 
 namespace App\Models;
 
+use App\Support\HtmlSanitizer;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\HtmlString;
 
 class Note extends Model
 {
@@ -24,6 +27,19 @@ class Note extends Model
         return [
             'date' => 'date',
         ];
+    }
+
+    /** Rich-text body is stored as sanitized HTML (from the Trix editor). */
+    protected function body(): Attribute
+    {
+        return Attribute::make(
+            set: fn ($value) => HtmlSanitizer::clean($value),
+        );
+    }
+
+    public function bodyHtml(): HtmlString
+    {
+        return new HtmlString($this->body ?? '');
     }
 
     public function author(): BelongsTo

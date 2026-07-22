@@ -83,4 +83,27 @@ class DailyNotesTest extends TestCase
     {
         $this->get(route('notes.index'))->assertRedirect(route('login'));
     }
+
+    public function test_rich_text_is_sanitized(): void
+    {
+        $user = User::factory()->create();
+
+        $this->actingAs($user)->post(route('notes.store'), [
+            'date' => '2026-07-22',
+            'body' => '<strong>Hi</strong><script>alert(1)</script><a href="javascript:alert(2)">x</a>',
+            'visibility' => 'shared',
+        ])->assertRedirect();
+
+        $body = Note::first()->body;
+        $this->assertStringContainsString('<strong>Hi</strong>', $body);
+        $this->assertStringNotContainsString('<script>', $body);
+        $this->assertStringNotContainsString('javascript:', $body);
+    }
+
+    public function test_visually_empty_html_is_rejected(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->post(route('notes.store'), ['date' => '2026-07-22', 'body' => '<div><br></div>', 'visibility' => 'shared'])
+            ->assertSessionHasErrors('body');
+    }
 }

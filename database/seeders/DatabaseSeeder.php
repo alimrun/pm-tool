@@ -124,11 +124,11 @@ class DatabaseSeeder extends Seeder
         $today = now()->toDateString();
         \App\Models\Note::create([
             'user_id' => $admin->id, 'date' => $today, 'visibility' => 'shared',
-            'body' => "Standup at 10am — focus on the Checkout v2.4 release. Please update your board cards.",
+            'body' => '<div>Standup at <strong>10am</strong> — focus on the <em>Checkout v2.4</em> release.</div><ul><li>Update your board cards</li><li>Flag any blockers</li></ul>',
         ]);
         \App\Models\Note::create([
             'user_id' => $viewer->id, 'date' => $today, 'visibility' => 'private',
-            'body' => "Reminder to myself: review the QA test plan before EOD.",
+            'body' => '<div>Reminder to myself: review the <strong>QA test plan</strong> before EOD.</div>',
         ]);
     }
 
