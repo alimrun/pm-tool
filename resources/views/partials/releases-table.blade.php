@@ -5,10 +5,10 @@
 @endphp
 
 @if ($releases->isEmpty())
-    <div class="p-10 text-center text-gray-500">No releases yet.</div>
+    <div class="p-10 text-center text-slate-500">No releases yet.</div>
 @else
-    <table class="min-w-full divide-y divide-gray-200 text-sm">
-        <thead class="bg-gray-50 text-left text-xs font-medium uppercase tracking-wide text-gray-500">
+    <table class="table-base">
+        <thead class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
             <tr>
                 <th class="px-6 py-3">Release</th>
                 @if ($showProject)<th class="px-6 py-3">Project</th>@endif
@@ -18,11 +18,11 @@
                 <th class="px-6 py-3">Status</th>
             </tr>
         </thead>
-        <tbody class="divide-y divide-gray-100">
+        <tbody class="divide-y divide-slate-100">
             @foreach ($releases as $release)
                 <tr class="{{ ($conflicts[$release->id] ?? false) ? 'bg-amber-50/60' : '' }}">
                     <td class="px-6 py-4">
-                        <a href="{{ route('releases.show', $release) }}" class="font-medium text-gray-900 hover:text-indigo-600">{{ $release->name }}</a>
+                        <a href="{{ route('releases.show', $release) }}" class="font-medium text-slate-900 hover:text-indigo-600">{{ $release->name }}</a>
                     </td>
                     @if ($showProject)
                         <td class="px-6 py-4">
@@ -40,8 +40,8 @@
                             </span>
                         </td>
                     @endif
-                    <td class="px-6 py-4 text-gray-600">{{ $release->year }} · {{ $release->quarterLabel() }}</td>
-                    <td class="px-6 py-4 text-gray-600">{{ $release->start_date->format('M j') }} – {{ $release->end_date->format('M j, Y') }}</td>
+                    <td class="px-6 py-4 text-slate-600">{{ $release->year }} · {{ $release->quarterLabel() }}</td>
+                    <td class="px-6 py-4 text-slate-600">{{ $release->start_date->format('M j') }} – {{ $release->end_date->format('M j, Y') }}</td>
                     <td class="px-6 py-4">
                         @if ($conflicts[$release->id] ?? false)
                             <span class="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-medium text-amber-800">
@@ -49,7 +49,7 @@
                                 Overlap
                             </span>
                         @else
-                            <span class="text-xs text-gray-400">—</span>
+                            <span class="text-xs text-slate-400">—</span>
                         @endif
                     </td>
                 </tr>

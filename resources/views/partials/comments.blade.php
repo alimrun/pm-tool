@@ -7,44 +7,44 @@
             </div>
             <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium text-gray-800">{{ $comment->user->name ?? 'Unknown' }}</span>
-                    <span class="text-xs text-gray-400">{{ $comment->created_at->diffForHumans() }}</span>
+                    <span class="text-sm font-medium text-slate-800">{{ $comment->user->name ?? 'Unknown' }}</span>
+                    <span class="text-xs text-slate-400">{{ $comment->created_at->diffForHumans() }}</span>
                     @if ($comment->created_at != $comment->updated_at)
-                        <span class="text-xs text-gray-300">(edited)</span>
+                        <span class="text-xs text-slate-300">(edited)</span>
                     @endif
                 </div>
 
-                <div x-show="!editing" class="mt-0.5 whitespace-pre-line text-sm text-gray-700">{{ $comment->body }}</div>
+                <div x-show="!editing" class="mt-0.5 whitespace-pre-line text-sm text-slate-700">{{ $comment->body }}</div>
 
                 @can('update', $comment)
                     <form x-show="editing" x-cloak method="POST" action="{{ route('comments.update', $comment) }}" class="mt-1">
                         @csrf @method('PUT')
-                        <textarea name="body" rows="2" class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ $comment->body }}</textarea>
+                        <textarea name="body" rows="2" class="field-input">{{ $comment->body }}</textarea>
                         <div class="mt-1 flex gap-2">
                             <button class="rounded bg-indigo-600 px-2 py-1 text-xs font-medium text-white hover:bg-indigo-700">Save</button>
-                            <button type="button" @click="editing = false" class="text-xs text-gray-500 hover:text-gray-700">Cancel</button>
+                            <button type="button" @click="editing = false" class="text-xs text-slate-500 hover:text-slate-700">Cancel</button>
                         </div>
                     </form>
                     <div x-show="!editing" class="mt-1 flex gap-3">
-                        <button type="button" @click="editing = true" class="text-xs text-gray-400 hover:text-indigo-600">Edit</button>
+                        <button type="button" @click="editing = true" class="text-xs text-slate-400 hover:text-indigo-600">Edit</button>
                         <form method="POST" action="{{ route('comments.destroy', $comment) }}" onsubmit="return confirm('Delete this comment?')">
                             @csrf @method('DELETE')
-                            <button class="text-xs text-gray-400 hover:text-rose-600">Delete</button>
+                            <button class="text-xs text-slate-400 hover:text-rose-600">Delete</button>
                         </form>
                     </div>
                 @endcan
             </div>
         </div>
     @empty
-        <p class="text-sm text-gray-400">No comments yet. Start the conversation.</p>
+        <p class="text-sm text-slate-400">No comments yet. Start the conversation.</p>
     @endforelse
 </div>
 
 <form method="POST" action="{{ $storeUrl }}" class="mt-4">
     @csrf
     <textarea name="body" rows="2" required placeholder="Write a comment…"
-              class="block w-full rounded-md border-gray-300 text-sm shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('body') }}</textarea>
+              class="field-input">{{ old('body') }}</textarea>
     <div class="mt-2 flex justify-end">
-        <button class="rounded-md bg-indigo-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-indigo-700">Post comment</button>
+        <button class="btn-primary btn-sm">Post comment</button>
     </div>
 </form>
