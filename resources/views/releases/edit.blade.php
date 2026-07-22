@@ -16,7 +16,7 @@
 
             <div class="mt-4 flex justify-end">
                 <form method="POST" action="{{ route('releases.destroy', $release) }}"
-                      onsubmit="return confirm('Delete this release, its phases and documents?')">
+                      data-confirm="Delete this release, its phases and documents?" data-confirm-verb="Delete">
                     @csrf @method('DELETE')
                     <button class="text-sm text-rose-600 hover:text-rose-800">Delete this release</button>
                 </form>

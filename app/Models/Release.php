@@ -3,11 +3,14 @@
 namespace App\Models;
 
 use App\Models\Concerns\RecordsActivity;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class Release extends Model
 {
@@ -15,6 +18,7 @@ class Release extends Model
 
     protected $fillable = [
         'project_id', 'team_id', 'name', 'description', 'year', 'quarter', 'start_date', 'end_date',
+        'completed_at', 'completed_by', 'completion_notes',
     ];
 
     protected function casts(): array
@@ -22,6 +26,7 @@ class Release extends Model
         return [
             'start_date' => 'date',
             'end_date' => 'date',
+            'completed_at' => 'datetime',
             'year' => 'integer',
             'quarter' => 'integer',
         ];
@@ -74,6 +79,39 @@ class Release extends Model
     public function team(): BelongsTo
     {
         return $this->belongsTo(Team::class);
+    }
+
+    public function completedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'completed_by');
+    }
+
+    public function isComplete(): bool
+    {
+        return $this->completed_at !== null;
+    }
+
+    public function scopeOngoing(Builder $query): Builder
+    {
+        return $query->whereNull('completed_at');
+    }
+
+    public function scopeCompleted(Builder $query): Builder
+    {
+        return $query->whereNotNull('completed_at');
+    }
+
+    /** Completion notes rendered from Markdown to safe HTML. */
+    public function renderedCompletionNotes(): ?HtmlString
+    {
+        if (blank($this->completion_notes)) {
+            return null;
+        }
+
+        return new HtmlString(Str::markdown($this->completion_notes, [
+            'html_input' => 'strip',
+            'allow_unsafe_links' => false,
+        ]));
     }
 
     public function phases(): HasMany

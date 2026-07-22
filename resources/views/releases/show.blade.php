@@ -2,7 +2,15 @@
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
-                <h2 class="page-title">{{ $release->name }}</h2>
+                <div class="flex flex-wrap items-center gap-2.5">
+                    <h2 class="page-title">{{ $release->name }}</h2>
+                    @if ($release->isComplete())
+                        <span class="badge bg-emerald-50 text-emerald-700">
+                            <svg class="h-3 w-3" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0l-3.5-3.5a1 1 0 111.4-1.4l2.8 2.79 6.8-6.79a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                            Completed
+                        </span>
+                    @endif
+                </div>
                 <p class="mt-1 text-sm text-slate-500">
                     <a href="{{ route('projects.show', $release->project) }}" class="hover:text-indigo-600">
                         <span class="inline-block h-2.5 w-2.5 rounded-full align-middle" style="background-color: {{ $release->project->color }}"></span>
@@ -37,6 +45,52 @@
                             @endforeach
                         </ul>
                     </div>
+                </div>
+            @endif
+
+            {{-- Completion --}}
+            @if ($release->isComplete())
+                <div class="card overflow-hidden">
+                    <div class="flex items-center gap-3 border-b border-slate-100 bg-emerald-50/50 px-5 py-4 sm:px-6">
+                        <span class="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-emerald-100 text-emerald-600">
+                            <svg class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.7 5.3a1 1 0 010 1.4l-7.5 7.5a1 1 0 01-1.4 0l-3.5-3.5a1 1 0 111.4-1.4l2.8 2.79 6.8-6.79a1 1 0 011.4 0z" clip-rule="evenodd"/></svg>
+                        </span>
+                        <div class="flex-1">
+                            <h3 class="text-sm font-semibold text-slate-900">Completed</h3>
+                            <p class="text-xs text-slate-500">
+                                {{ $release->completed_at->format('M j, Y') }}
+                                @if ($release->completedBy) · by {{ $release->completedBy->name }} @endif
+                            </p>
+                        </div>
+                        @if (auth()->user()->isAdmin())
+                            <form method="POST" action="{{ route('releases.reopen', $release) }}">
+                                @csrf
+                                <button class="btn-secondary btn-sm">Reopen</button>
+                            </form>
+                        @endif
+                    </div>
+                    @if ($release->renderedCompletionNotes())
+                        <div class="prose-notes px-5 py-4 text-sm text-slate-700 sm:px-6">{!! $release->renderedCompletionNotes() !!}</div>
+                    @endif
+                </div>
+            @elseif (auth()->user()->isAdmin())
+                <div class="card card-pad" x-data="{ open: false }">
+                    <div class="flex items-center justify-between gap-3">
+                        <div>
+                            <h3 class="text-sm font-semibold text-slate-900">Mark this release complete</h3>
+                            <p class="mt-0.5 text-xs text-slate-500">It will drop off the dashboard and stop counting against the team's schedule. You can add closing notes and reopen it anytime.</p>
+                        </div>
+                        <button type="button" @click="open = !open" x-show="!open" class="btn-primary btn-sm whitespace-nowrap">Mark complete</button>
+                    </div>
+                    <form x-show="open" x-cloak method="POST" action="{{ route('releases.complete', $release) }}" class="mt-4">
+                        @csrf
+                        <label for="completion_notes" class="field-label">Completion notes <span class="text-slate-400">(optional · Markdown supported)</span></label>
+                        <textarea id="completion_notes" name="completion_notes" rows="4" class="field-textarea" placeholder="What shipped, known issues, follow-ups…"></textarea>
+                        <div class="mt-3 flex items-center gap-2">
+                            <button class="btn-primary btn-sm">Confirm completion</button>
+                            <button type="button" @click="open = false" class="btn-ghost btn-sm">Cancel</button>
+                        </div>
+                    </form>
                 </div>
             @endif
 
@@ -207,7 +261,7 @@
                                     <a href="{{ route('releases.documents.download', [$release, $document]) }}" class="text-sm text-slate-500 hover:text-indigo-600">Download</a>
                                     @if (auth()->user()->isAdmin())
                                         <form method="POST" action="{{ route('releases.documents.destroy', [$release, $document]) }}"
-                                              onsubmit="return confirm('Delete this document?')">
+                                              data-confirm="Delete this document?" data-confirm-verb="Delete">
                                             @csrf @method('DELETE')
                                             <button class="text-sm text-slate-500 hover:text-rose-600">Delete</button>
                                         </form>

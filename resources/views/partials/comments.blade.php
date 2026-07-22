@@ -27,7 +27,7 @@
                     </form>
                     <div x-show="!editing" class="mt-1 flex gap-3">
                         <button type="button" @click="editing = true" class="text-xs text-slate-400 hover:text-indigo-600">Edit</button>
-                        <form method="POST" action="{{ route('comments.destroy', $comment) }}" onsubmit="return confirm('Delete this comment?')">
+                        <form method="POST" action="{{ route('comments.destroy', $comment) }}" data-confirm="Delete this comment?" data-confirm-verb="Delete">
                             @csrf @method('DELETE')
                             <button class="text-xs text-slate-400 hover:text-rose-600">Delete</button>
                         </form>

@@ -55,7 +55,7 @@
                         </select>
                     </form>
                     <button type="button" @click="addSub = !addSub" class="text-xs text-slate-400 hover:text-indigo-600" title="Add subtask">+ Sub</button>
-                    <form method="POST" action="{{ route('tasks.destroy', $task) }}" onsubmit="return confirm('Delete this task and its subtasks?')">
+                    <form method="POST" action="{{ route('tasks.destroy', $task) }}" data-confirm="Delete this task and its subtasks?" data-confirm-verb="Delete">
                         @csrf @method('DELETE')
                         <button class="text-xs text-slate-400 hover:text-rose-600">✕</button>
                     </form>
@@ -70,7 +70,7 @@
                             <a href="{{ route('tasks.show', $sub) }}" class="text-sm text-slate-700 hover:text-indigo-600 {{ $sub->isDone() ? 'line-through text-slate-400' : '' }}">{{ $sub->title }}</a>
                             <div class="flex items-center gap-2">
                                 @include('partials.status-badge', ['status' => $sub->status])
-                                <form method="POST" action="{{ route('tasks.destroy', $sub) }}" onsubmit="return confirm('Delete this subtask?')">
+                                <form method="POST" action="{{ route('tasks.destroy', $sub) }}" data-confirm="Delete this subtask?" data-confirm-verb="Delete">
                                     @csrf @method('DELETE')
                                     <button class="text-xs text-slate-300 hover:text-rose-600">✕</button>
                                 </form>

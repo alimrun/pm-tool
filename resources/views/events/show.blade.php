@@ -9,7 +9,7 @@
             @can('update', $event)
                 <div class="flex items-center gap-3">
                     <a href="{{ route('events.edit', $event) }}" class="btn-secondary btn-sm">Edit</a>
-                    <form method="POST" action="{{ route('events.destroy', $event) }}" onsubmit="return confirm('Delete this event?')">
+                    <form method="POST" action="{{ route('events.destroy', $event) }}" data-confirm="Delete this event?" data-confirm-verb="Delete">
                         @csrf @method('DELETE')
                         <button class="rounded-md border border-rose-200 bg-white px-3 py-2 text-sm font-medium text-rose-600 hover:bg-rose-50">Delete</button>
                     </form>

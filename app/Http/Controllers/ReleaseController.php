@@ -10,6 +10,7 @@ use App\Models\Team;
 use App\Models\User;
 use App\Services\OverlapChecker;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -17,6 +18,54 @@ class ReleaseController extends Controller
 {
     public function __construct(private readonly OverlapChecker $overlap)
     {
+    }
+
+    public function index(Request $request): View
+    {
+        $status = $request->input('status'); // active | completed | (all)
+        $projectId = $request->filled('project_id') ? (int) $request->integer('project_id') : null;
+        $teamId = $request->filled('team_id') ? (int) $request->integer('team_id') : null;
+        $year = $request->filled('year') ? (int) $request->integer('year') : null;
+
+        $releases = Release::query()
+            ->with(['project', 'team', 'completedBy'])
+            ->when($status === 'active', fn ($q) => $q->ongoing())
+            ->when($status === 'completed', fn ($q) => $q->completed())
+            ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
+            ->when($teamId, fn ($q) => $q->where('team_id', $teamId))
+            ->when($year, fn ($q) => $q->where('year', $year))
+            ->orderBy('year', 'desc')->orderBy('quarter', 'desc')->orderBy('start_date', 'desc')
+            ->get();
+
+        return view('releases.index', [
+            'releases' => $releases,
+            'projects' => Project::orderBy('name')->get(),
+            'teams' => Team::orderBy('name')->get(),
+            'years' => Release::query()->select('year')->distinct()->orderBy('year', 'desc')->pluck('year'),
+            'filters' => compact('status', 'projectId', 'teamId', 'year'),
+        ]);
+    }
+
+    public function complete(Request $request, Release $release): RedirectResponse
+    {
+        $data = $request->validate([
+            'completion_notes' => ['nullable', 'string', 'max:10000'],
+        ]);
+
+        $release->update([
+            'completed_at' => now(),
+            'completed_by' => $request->user()->id,
+            'completion_notes' => $data['completion_notes'] ?? null,
+        ]);
+
+        return back()->with('success', "Release “{$release->name}” marked complete.");
+    }
+
+    public function reopen(Release $release): RedirectResponse
+    {
+        $release->update(['completed_at' => null, 'completed_by' => null]);
+
+        return back()->with('success', "Release “{$release->name}” reopened.");
     }
 
     public function create(): View
@@ -29,6 +78,7 @@ class ReleaseController extends Controller
             'projects' => Project::active()->orderBy('name')->get(),
             'teams' => Team::active()->orderBy('name')->get(),
             'phaseValues' => [],
+            'offDayValues' => [],
         ]);
     }
 
@@ -39,6 +89,7 @@ class ReleaseController extends Controller
                 'project_id', 'team_id', 'name', 'description', 'year', 'quarter', 'start_date', 'end_date',
             ]));
             $this->syncPhases($release, $request->input('phases', []));
+            $this->syncOffDays($release, $request->input('off_days', []));
 
             return $release;
         });
@@ -86,6 +137,8 @@ class ReleaseController extends Controller
             'projects' => Project::active()->orderBy('name')->get(),
             'teams' => Team::active()->orderBy('name')->get(),
             'phaseValues' => $release->phases->keyBy('phase'),
+            'offDayValues' => $release->offDays()->orderBy('date')->get()
+                ->map(fn ($o) => ['date' => $o->date->toDateString(), 'reason' => $o->reason])->all(),
         ]);
     }
 
@@ -96,6 +149,7 @@ class ReleaseController extends Controller
                 'project_id', 'team_id', 'name', 'description', 'year', 'quarter', 'start_date', 'end_date',
             ]));
             $this->syncPhases($release, $request->input('phases', []));
+            $this->syncOffDays($release, $request->input('off_days', []));
         });
 
         return redirect()->route('releases.show', $release)
@@ -127,6 +181,41 @@ class ReleaseController extends Controller
                 'start_date' => $phases[$key]['start'] ?? $release->start_date,
                 'end_date' => $phases[$key]['end'] ?? $release->end_date,
             ]);
+        }
+    }
+
+    /**
+     * Reconcile the release's off-days with those submitted on the form, keyed by
+     * date so unchanged rows are left alone (keeps the activity log quiet).
+     *
+     * @param  array<int, array{date?: string, reason?: string}>  $offDays
+     */
+    private function syncOffDays(Release $release, array $offDays): void
+    {
+        $submitted = collect($offDays)
+            ->filter(fn ($o) => filled($o['date'] ?? null))
+            ->keyBy(fn ($o) => \Illuminate\Support\Carbon::parse($o['date'])->toDateString());
+
+        $existing = $release->offDays()->get()->keyBy(fn ($o) => $o->date->toDateString());
+
+        // Remove off-days no longer present.
+        foreach ($existing as $date => $offDay) {
+            if (! $submitted->has($date)) {
+                $offDay->delete();
+            }
+        }
+
+        // Add new ones / update reasons on existing ones.
+        foreach ($submitted as $date => $data) {
+            $reason = $data['reason'] ?? null;
+            if ($existing->has($date)) {
+                $offDay = $existing[$date];
+                if ($offDay->reason !== $reason) {
+                    $offDay->update(['reason' => $reason]);
+                }
+            } else {
+                $release->offDays()->create(['date' => $date, 'reason' => $reason]);
+            }
         }
     }
 

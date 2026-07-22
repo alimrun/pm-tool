@@ -30,7 +30,7 @@
                 </header>
             @endisset
 
-            {{-- Flash messages --}}
+            {{-- Inline validation summary (page-scoped, persists while fixing) --}}
             <div class="app-container">
                 @include('layouts.flash')
             </div>
@@ -40,5 +40,10 @@
                 {{ $slot }}
             </main>
         </div>
+
+        {{-- Floating toasts + confirmation modal --}}
+        @include('layouts.toasts')
+        @include('layouts.confirm')
     </body>
 </html>
+

@@ -33,6 +33,11 @@ class ReleaseRequest extends FormRequest
             $rules["phases.$key.end"] = ['required', 'date', "after_or_equal:phases.$key.start"];
         }
 
+        // Off-days entered on the form (each within the window, no duplicate dates).
+        $rules['off_days'] = ['nullable', 'array'];
+        $rules['off_days.*.date'] = ['required', 'date', 'distinct'];
+        $rules['off_days.*.reason'] = ['nullable', 'string', 'max:255'];
+
         return $rules;
     }
 
@@ -67,6 +72,13 @@ class ReleaseRequest extends FormRequest
                         "phases.$key.end",
                         "{$label} cannot end after the release end date."
                     );
+                }
+            }
+
+            foreach ((array) $this->input('off_days', []) as $i => $off) {
+                $date = $this->parseDate($off['date'] ?? null);
+                if ($date && ($date->lt($start) || $date->gt($end))) {
+                    $validator->errors()->add("off_days.$i.date", 'Off-days must fall within the release window.');
                 }
             }
         });

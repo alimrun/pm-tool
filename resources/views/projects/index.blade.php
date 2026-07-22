@@ -64,7 +64,7 @@
                                                 @endif
                                                 @if ($project->releases_count === 0)
                                                     <form method="POST" action="{{ route('projects.destroy', $project) }}"
-                                                          onsubmit="return confirm('Delete this project permanently?')">
+                                                          data-confirm="Delete this project permanently?" data-confirm-verb="Delete">
                                                         @csrf @method('DELETE')
                                                         <button class="text-slate-500 hover:text-rose-600">Delete</button>
                                                     </form>

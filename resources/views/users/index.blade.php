@@ -50,7 +50,7 @@
                                             </button>
                                         </form>
                                         <form method="POST" action="{{ route('users.destroy', $user) }}"
-                                              onsubmit="return confirm('Delete this user permanently?')">
+                                              data-confirm="Delete this user permanently?" data-confirm-verb="Delete">
                                             @csrf @method('DELETE')
                                             <button class="text-slate-500 hover:text-rose-600">Delete</button>
                                         </form>

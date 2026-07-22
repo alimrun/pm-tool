@@ -98,6 +98,31 @@ class KanbanBoardTest extends TestCase
         $this->assertSame('todo', $task->fresh()->status);
     }
 
+    public function test_user_can_add_a_task_from_the_board(): void
+    {
+        $release = $this->release();
+
+        $this->actingAs(User::factory()->create(['role' => User::ROLE_QA]))
+            ->post(route('board.tasks.store'), [
+                'release_id' => $release->id,
+                'title' => 'Card from board',
+                'status' => 'in_progress',
+            ])->assertRedirect();
+
+        $task = Task::first();
+        $this->assertSame('Card from board', $task->title);
+        $this->assertSame('in_progress', $task->status);
+        $this->assertSame($release->id, $task->release_id);
+        $this->assertNull($task->parent_id);
+    }
+
+    public function test_board_add_task_validates(): void
+    {
+        $this->actingAs(User::factory()->create())
+            ->post(route('board.tasks.store'), ['title' => '', 'status' => 'nope'])
+            ->assertSessionHasErrors(['release_id', 'title', 'status']);
+    }
+
     public function test_filter_by_release(): void
     {
         $r1 = $this->release();

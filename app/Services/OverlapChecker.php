@@ -29,6 +29,7 @@ class OverlapChecker
         return Release::query()
             ->with(['project', 'team'])
             ->where('team_id', $teamId)
+            ->whereNull('completed_at') // a shipped release no longer books the team
             ->when($exceptReleaseId, fn ($q) => $q->whereKeyNot($exceptReleaseId))
             ->whereDate('start_date', '<=', $end)
             ->whereDate('end_date', '>=', $start)

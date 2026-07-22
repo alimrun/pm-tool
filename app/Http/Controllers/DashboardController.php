@@ -27,6 +27,7 @@ class DashboardController extends Controller
         // Releases whose window intersects the axis, plus optional filters.
         $releases = Release::query()
             ->with(['project', 'team', 'phases'])
+            ->whereNull('completed_at') // completed releases drop off the timeline
             ->whereDate('start_date', '<=', $rangeEnd->toDateString())
             ->whereDate('end_date', '>=', $rangeStart->toDateString())
             ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
@@ -94,7 +95,7 @@ class DashboardController extends Controller
         $teamIds = $releases->pluck('team_id')->unique();
 
         foreach ($teamIds as $teamId) {
-            $teamReleases = Release::where('team_id', $teamId)->get();
+            $teamReleases = Release::where('team_id', $teamId)->whereNull('completed_at')->get();
             foreach ($overlap->flagConflicts($teamReleases) as $releaseId => $flag) {
                 $flags[$releaseId] = $flag;
             }

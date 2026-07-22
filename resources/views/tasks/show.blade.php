@@ -90,7 +90,7 @@
                                     <div class="flex items-center gap-2">
                                         @if ($sub->assignee)<span class="text-xs text-slate-400">{{ $sub->assignee->name }}</span>@endif
                                         @include('partials.status-badge', ['status' => $sub->status])
-                                        <form method="POST" action="{{ route('tasks.destroy', $sub) }}" onsubmit="return confirm('Delete this subtask?')">
+                                        <form method="POST" action="{{ route('tasks.destroy', $sub) }}" data-confirm="Delete this subtask?" data-confirm-verb="Delete">
                                             @csrf @method('DELETE')
                                             <button class="text-xs text-slate-300 hover:text-rose-600">✕</button>
                                         </form>

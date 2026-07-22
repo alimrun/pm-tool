@@ -10,6 +10,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReleaseController;
 use App\Http\Controllers\ReleaseDocumentController;
+use App\Http\Controllers\NoteController;
 use App\Http\Controllers\ReleaseOffDayController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TeamController;
@@ -50,6 +51,8 @@ Route::middleware('auth')->group(function () {
         Route::get('releases/{release}/edit', [ReleaseController::class, 'edit'])->name('releases.edit');
         Route::put('releases/{release}', [ReleaseController::class, 'update'])->name('releases.update');
         Route::delete('releases/{release}', [ReleaseController::class, 'destroy'])->name('releases.destroy');
+        Route::post('releases/{release}/complete', [ReleaseController::class, 'complete'])->name('releases.complete');
+        Route::post('releases/{release}/reopen', [ReleaseController::class, 'reopen'])->name('releases.reopen');
 
         // Release documents (write)
         Route::post('releases/{release}/documents', [ReleaseDocumentController::class, 'store'])
@@ -77,6 +80,7 @@ Route::middleware('auth')->group(function () {
     Route::get('teams', [TeamController::class, 'index'])->name('teams.index');
     Route::get('teams/{team}', [TeamController::class, 'show'])->name('teams.show');
 
+    Route::get('releases', [ReleaseController::class, 'index'])->name('releases.index');
     Route::get('releases/{release}', [ReleaseController::class, 'show'])->name('releases.show');
     Route::get('releases/{release}/documents/{document}', [ReleaseDocumentController::class, 'download'])
         ->name('releases.documents.download')
@@ -101,6 +105,7 @@ Route::middleware('auth')->group(function () {
 
     // Kanban board
     Route::get('board', [BoardController::class, 'index'])->name('board.index');
+    Route::post('board/tasks', [BoardController::class, 'storeTask'])->name('board.tasks.store');
     Route::patch('board/tasks/{task}', [BoardController::class, 'move'])->name('board.move');
 
     // Calendar & events (any authenticated user creates; creator/admin edits)
@@ -111,6 +116,12 @@ Route::middleware('auth')->group(function () {
     Route::get('events/{event}/edit', [EventController::class, 'edit'])->name('events.edit');
     Route::put('events/{event}', [EventController::class, 'update'])->name('events.update');
     Route::delete('events/{event}', [EventController::class, 'destroy'])->name('events.destroy');
+
+    // Daily notes (private / shared)
+    Route::get('notes', [NoteController::class, 'index'])->name('notes.index');
+    Route::post('notes', [NoteController::class, 'store'])->name('notes.store');
+    Route::put('notes/{note}', [NoteController::class, 'update'])->name('notes.update');
+    Route::delete('notes/{note}', [NoteController::class, 'destroy'])->name('notes.destroy');
 
     // Activity feed
     Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');

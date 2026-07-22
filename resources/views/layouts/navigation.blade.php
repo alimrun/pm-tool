@@ -2,8 +2,10 @@
     $user = auth()->user();
     $nav = [
         ['label' => 'Dashboard', 'route' => 'dashboard', 'patterns' => ['dashboard']],
+        ['label' => 'Releases', 'route' => 'releases.index', 'patterns' => ['releases.*']],
         ['label' => 'Board', 'route' => 'board.index', 'patterns' => ['board.*']],
         ['label' => 'Calendar', 'route' => 'calendar.index', 'patterns' => ['calendar.*', 'events.*']],
+        ['label' => 'Notes', 'route' => 'notes.index', 'patterns' => ['notes.*']],
         ['label' => 'Projects', 'route' => 'projects.index', 'patterns' => ['projects.*']],
         ['label' => 'Teams', 'route' => 'teams.index', 'patterns' => ['teams.*']],
         ['label' => 'Activity', 'route' => 'activity.index', 'patterns' => ['activity.*']],

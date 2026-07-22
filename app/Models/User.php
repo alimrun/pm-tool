@@ -91,6 +91,11 @@ class User extends Authenticatable
         return $this->hasMany(Comment::class);
     }
 
+    public function notes(): HasMany
+    {
+        return $this->hasMany(Note::class);
+    }
+
     public function createdEvents(): HasMany
     {
         return $this->hasMany(Event::class, 'created_by');

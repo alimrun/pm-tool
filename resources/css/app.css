@@ -136,6 +136,20 @@
         @apply transition-colors hover:bg-slate-50/70;
     }
 
+    /* Rendered Markdown (release completion notes) */
+    .prose-notes :where(p, ul, ol, blockquote, pre) { @apply my-2; }
+    .prose-notes :where(h1, h2, h3, h4) { @apply mb-1 mt-3 font-semibold text-slate-900; }
+    .prose-notes h1 { @apply text-base; }
+    .prose-notes h2 { @apply text-sm; }
+    .prose-notes ul { @apply list-disc pl-5; }
+    .prose-notes ol { @apply list-decimal pl-5; }
+    .prose-notes li { @apply my-0.5; }
+    .prose-notes a { @apply font-medium text-brand-600 underline; }
+    .prose-notes code { @apply rounded bg-slate-100 px-1 py-0.5 text-xs text-slate-800; }
+    .prose-notes pre { @apply overflow-x-auto rounded-lg bg-slate-900 p-3 text-xs text-slate-100; }
+    .prose-notes blockquote { @apply border-l-2 border-slate-200 pl-3 text-slate-500; }
+    .prose-notes strong { @apply font-semibold text-slate-900; }
+
     /* Page-title cluster used in the sticky sub-header */
     .page-title {
         @apply text-lg font-semibold tracking-tight text-slate-900 sm:text-xl;

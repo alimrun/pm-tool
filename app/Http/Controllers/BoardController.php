@@ -6,6 +6,7 @@ use App\Models\Release;
 use App\Models\Task;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
@@ -41,6 +42,26 @@ class BoardController extends Controller
             'users' => User::orderBy('name')->get(),
             'filters' => ['release_id' => $releaseId, 'assignee_id' => $assigneeId],
         ]);
+    }
+
+    public function storeTask(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'release_id' => ['required', Rule::exists('releases', 'id')],
+            'title' => ['required', 'string', 'max:255'],
+            'status' => ['required', Rule::in(array_keys(Task::STATUSES))],
+        ]);
+
+        $release = Release::findOrFail($data['release_id']);
+        $release->tasks()->create([
+            'title' => $data['title'],
+            'status' => $data['status'],
+            'parent_id' => null,
+            'created_by' => $request->user()->id,
+            'position' => $release->rootTasks()->count(),
+        ]);
+
+        return back()->with('success', 'Task added to the board.');
     }
 
     public function move(Request $request, Task $task): JsonResponse

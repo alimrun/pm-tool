@@ -62,7 +62,13 @@ class DatabaseSeeder extends Seeder
         $this->makeRelease($mobile, $bravo, 'Mobile 3.0', $year, 3, "$year-08-01", "$year-08-28");
         $this->makeRelease($mobile, $bravo, 'Mobile 3.1', $year, 4, "$year-11-03", "$year-11-24");
 
-        $this->makeRelease($data, $charlie, 'Data Platform GA', $year, 2, "$year-05-05", "$year-06-20");
+        $ga = $this->makeRelease($data, $charlie, 'Data Platform GA', $year, 2, "$year-05-05", "$year-06-20");
+        $ga->update([
+            'completed_at' => Carbon::parse("$year-06-20 17:00:00"),
+            'completed_by' => $admin->id,
+            'completion_notes' => "Shipped on schedule. \n\n**Highlights**\n- New ingestion pipeline live\n- Dashboards migrated\n\n**Follow-ups**\n- Backfill historical data next quarter",
+        ]);
+
         $this->makeRelease($billing, $charlie, 'Billing revamp', $year, 3, "$year-09-01", "$year-09-30");
 
         // --- Collaboration demo data on Checkout v2.4 --------------------
@@ -112,6 +118,17 @@ class DatabaseSeeder extends Seeder
             'title' => 'Checkout v2.4 release day', 'type' => 'release', 'all_day' => true,
             'starts_at' => "$year-07-29 00:00:00", 'ends_at' => "$year-07-30 23:59:59",
             'release_id' => $r1->id, 'created_by' => $admin->id,
+        ]);
+
+        // --- Daily notes ------------------------------------------------
+        $today = now()->toDateString();
+        \App\Models\Note::create([
+            'user_id' => $admin->id, 'date' => $today, 'visibility' => 'shared',
+            'body' => "Standup at 10am — focus on the Checkout v2.4 release. Please update your board cards.",
+        ]);
+        \App\Models\Note::create([
+            'user_id' => $viewer->id, 'date' => $today, 'visibility' => 'private',
+            'body' => "Reminder to myself: review the QA test plan before EOD.",
         ]);
     }
 

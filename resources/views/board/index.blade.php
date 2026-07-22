@@ -70,6 +70,36 @@
                             @endforeach
                             <p class="board-empty px-1 py-6 text-center text-xs text-slate-400" @if($cards->count()) style="display:none" @endif>Drop tasks here</p>
                         </div>
+
+                        {{-- Add a card --}}
+                        <div x-data="{ adding: false }" class="mt-2">
+                            <button type="button" x-show="!adding" @click="adding = true; $nextTick(() => $refs.title.focus())"
+                                    class="flex w-full items-center gap-1.5 rounded-lg px-2 py-1.5 text-left text-xs font-medium text-slate-500 transition hover:bg-slate-200/70">
+                                <svg class="h-3.5 w-3.5" viewBox="0 0 20 20" fill="currentColor"><path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/></svg>
+                                Add a card
+                            </button>
+                            <form x-show="adding" x-cloak method="POST" action="{{ route('board.tasks.store') }}" class="space-y-2 rounded-lg border border-slate-200 bg-white p-2 shadow-sm">
+                                @csrf
+                                <input type="hidden" name="status" value="{{ $status }}">
+                                <textarea name="title" x-ref="title" rows="2" required maxlength="255" placeholder="What needs doing?"
+                                          @keydown.escape="adding = false"
+                                          class="block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500"></textarea>
+                                @if ($release)
+                                    <input type="hidden" name="release_id" value="{{ $release->id }}">
+                                @else
+                                    <select name="release_id" required class="block w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                                        <option value="">Select release…</option>
+                                        @foreach ($releases as $r)
+                                            <option value="{{ $r->id }}">{{ $r->name }}</option>
+                                        @endforeach
+                                    </select>
+                                @endif
+                                <div class="flex items-center gap-2">
+                                    <button class="btn-primary btn-sm">Add card</button>
+                                    <button type="button" @click="adding = false" class="btn-ghost btn-sm">Cancel</button>
+                                </div>
+                            </form>
+                        </div>
                     </div>
                 @endforeach
             </div>

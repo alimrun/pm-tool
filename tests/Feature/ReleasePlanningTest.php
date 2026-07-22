@@ -42,6 +42,58 @@ class ReleasePlanningTest extends TestCase
         ];
     }
 
+    public function test_release_can_be_created_with_off_days(): void
+    {
+        $project = Project::create(['name' => 'P', 'color' => '#4f46e5']);
+        $team = Team::create(['name' => 'T', 'color' => '#0891b2']);
+
+        $payload = $this->payload($project, $team, '2026-07-10', '2026-07-30');
+        $payload['off_days'] = [
+            ['date' => '2026-07-14', 'reason' => 'Holiday'],
+            ['date' => '2026-07-18', 'reason' => ''],
+        ];
+
+        $this->actingAs($this->admin())->post(route('releases.store'), $payload)->assertRedirect();
+
+        $release = Release::first();
+        $this->assertSame(2, $release->offDays()->count());
+        $this->assertSame('Holiday', $release->offDays()->whereDate('date', '2026-07-14')->value('reason'));
+    }
+
+    public function test_off_day_outside_window_is_rejected(): void
+    {
+        $project = Project::create(['name' => 'P', 'color' => '#4f46e5']);
+        $team = Team::create(['name' => 'T', 'color' => '#0891b2']);
+
+        $payload = $this->payload($project, $team, '2026-07-10', '2026-07-30');
+        $payload['off_days'] = [['date' => '2026-08-15', 'reason' => 'Nope']];
+
+        $this->actingAs($this->admin())->post(route('releases.store'), $payload)
+            ->assertSessionHasErrors('off_days.0.date');
+        $this->assertSame(0, Release::count());
+    }
+
+    public function test_editing_release_syncs_off_days(): void
+    {
+        $project = Project::create(['name' => 'P', 'color' => '#4f46e5']);
+        $team = Team::create(['name' => 'T', 'color' => '#0891b2']);
+        $this->actingAs($this->admin())->post(route('releases.store'),
+            array_merge($this->payload($project, $team, '2026-07-10', '2026-07-30'), [
+                'off_days' => [['date' => '2026-07-14', 'reason' => 'Holiday']],
+            ]));
+        $release = Release::first();
+
+        // Replace the off-day set on update.
+        $this->actingAs($this->admin())->put(route('releases.update', $release),
+            array_merge($this->payload($project, $team, '2026-07-10', '2026-07-30'), [
+                'off_days' => [['date' => '2026-07-20', 'reason' => 'Team offsite']],
+            ]))->assertRedirect();
+
+        $this->assertSame(1, $release->offDays()->count());
+        $this->assertNotNull($release->offDays()->whereDate('date', '2026-07-20')->first());
+        $this->assertNull($release->offDays()->whereDate('date', '2026-07-14')->first());
+    }
+
     public function test_admin_can_create_a_release_with_four_phases(): void
     {
         $project = Project::create(['name' => 'P', 'color' => '#4f46e5']);
