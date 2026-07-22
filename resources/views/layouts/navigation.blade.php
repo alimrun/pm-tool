@@ -7,12 +7,18 @@
         ['label' => 'Calendar', 'route' => 'calendar.index', 'patterns' => ['calendar.*', 'events.*']],
         ['label' => 'Notes', 'route' => 'notes.index', 'patterns' => ['notes.*']],
         ['label' => 'Meetings', 'route' => 'meeting-notes.index', 'patterns' => ['meeting-notes.*']],
+        ['label' => 'Tasksheet', 'route' => 'tasksheet.index', 'patterns' => ['tasksheet.*']],
         ['label' => 'Projects', 'route' => 'projects.index', 'patterns' => ['projects.*']],
         ['label' => 'Teams', 'route' => 'teams.index', 'patterns' => ['teams.*']],
         ['label' => 'Activity', 'route' => 'activity.index', 'patterns' => ['activity.*']],
     ];
     if ($user->canManageUsers()) {
         $nav[] = ['label' => 'Users', 'route' => 'users.index', 'patterns' => ['users.*']];
+    }
+    if ($user->hasLimitedAccess()) {
+        // Developers/QA: work surfaces only — no planning sections.
+        $allowed = ['dashboard', 'board.index', 'calendar.index', 'notes.index', 'meeting-notes.index', 'tasksheet.index'];
+        $nav = array_values(array_filter($nav, fn ($item) => in_array($item['route'], $allowed, true)));
     }
     $initials = collect(explode(' ', $user->name))->filter()->take(2)->map(fn ($p) => mb_substr($p, 0, 1))->implode('');
 @endphp

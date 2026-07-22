@@ -5,7 +5,11 @@
         <span class="mt-1 h-2.5 w-2.5 flex-none rounded-full" style="background-color: {{ $task->release->project->color ?? '#94a3b8' }}"></span>
         <div class="min-w-0 flex-1">
             <a href="{{ route('tasks.show', $task) }}" draggable="false" class="block text-sm font-medium text-slate-900 hover:text-indigo-600">{{ $task->title }}</a>
-            <a href="{{ route('releases.show', $task->release) }}" draggable="false" class="mt-0.5 block truncate text-xs text-slate-400 hover:text-indigo-600">{{ $task->release->name }}</a>
+            @if (auth()->user()->hasLimitedAccess())
+                <span class="mt-0.5 block truncate text-xs text-slate-400">{{ $task->release->name }}</span>
+            @else
+                <a href="{{ route('releases.show', $task->release) }}" draggable="false" class="mt-0.5 block truncate text-xs text-slate-400 hover:text-indigo-600">{{ $task->release->name }}</a>
+            @endif
         </div>
     </div>
 

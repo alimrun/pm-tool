@@ -16,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
             'manage-users' => \App\Http\Middleware\EnsureUserCanManageUsers::class,
             'manage-releases' => \App\Http\Middleware\EnsureUserCanManageReleases::class,
+            'full-access' => \App\Http\Middleware\EnsureFullAccess::class,
         ]);
 
         // Sign out any user deactivated mid-session on their next request.

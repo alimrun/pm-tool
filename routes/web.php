@@ -14,6 +14,7 @@ use App\Http\Controllers\MeetingNoteController;
 use App\Http\Controllers\NoteController;
 use App\Http\Controllers\ReleaseOffDayController;
 use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TasksheetController;
 use App\Http\Controllers\TeamController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Route;
@@ -85,33 +86,41 @@ Route::middleware('auth')->group(function () {
     });
 
     /*
-     | Read-only views available to every authenticated user (admin + viewer).
+     | Planning views — hidden from limited roles (developer, QA). New planning
+     | routes belong inside this `full-access` group.
      */
-    Route::get('projects', [ProjectController::class, 'index'])->name('projects.index');
-    Route::get('projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
+    Route::middleware('full-access')->group(function () {
+        Route::get('projects', [ProjectController::class, 'index'])->name('projects.index');
+        Route::get('projects/{project}', [ProjectController::class, 'show'])->name('projects.show');
 
-    Route::get('teams', [TeamController::class, 'index'])->name('teams.index');
-    Route::get('teams/{team}', [TeamController::class, 'show'])->name('teams.show');
+        Route::get('teams', [TeamController::class, 'index'])->name('teams.index');
+        Route::get('teams/{team}', [TeamController::class, 'show'])->name('teams.show');
 
-    Route::get('releases', [ReleaseController::class, 'index'])->name('releases.index');
-    Route::get('releases/{release}', [ReleaseController::class, 'show'])->name('releases.show');
-    Route::get('releases/{release}/documents/{document}', [ReleaseDocumentController::class, 'download'])
-        ->name('releases.documents.download')
-        ->scopeBindings();
+        Route::get('releases', [ReleaseController::class, 'index'])->name('releases.index');
+        Route::get('releases/{release}', [ReleaseController::class, 'show'])->name('releases.show');
+        Route::get('releases/{release}/documents/{document}', [ReleaseDocumentController::class, 'download'])
+            ->name('releases.documents.download')
+            ->scopeBindings();
+
+        // Release-scoped collaboration writes live with the release pages.
+        Route::post('releases/{release}/tasks', [TaskController::class, 'store'])->name('releases.tasks.store');
+        Route::post('releases/{release}/comments', [CommentController::class, 'storeForRelease'])->name('releases.comments.store');
+
+        // Activity feed
+        Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
+    });
 
     /*
      | Collaboration — any authenticated user (admin or viewer) may participate.
      */
     // Tasks & subtasks
-    Route::post('releases/{release}/tasks', [TaskController::class, 'store'])->name('releases.tasks.store');
     Route::post('tasks/{task}/subtasks', [TaskController::class, 'storeSubtask'])->name('tasks.subtasks.store');
     Route::get('tasks/{task}', [TaskController::class, 'show'])->name('tasks.show');
     Route::put('tasks/{task}', [TaskController::class, 'update'])->name('tasks.update');
     Route::patch('tasks/{task}/status', [TaskController::class, 'updateStatus'])->name('tasks.status');
     Route::delete('tasks/{task}', [TaskController::class, 'destroy'])->name('tasks.destroy');
 
-    // Comments (polymorphic: releases + tasks)
-    Route::post('releases/{release}/comments', [CommentController::class, 'storeForRelease'])->name('releases.comments.store');
+    // Comments on tasks (release comments live in the full-access group above)
     Route::post('tasks/{task}/comments', [CommentController::class, 'storeForTask'])->name('tasks.comments.store');
     Route::put('comments/{comment}', [CommentController::class, 'update'])->name('comments.update');
     Route::delete('comments/{comment}', [CommentController::class, 'destroy'])->name('comments.destroy');
@@ -145,8 +154,9 @@ Route::middleware('auth')->group(function () {
     Route::put('meeting-notes/{meetingNote}', [MeetingNoteController::class, 'update'])->name('meeting-notes.update');
     Route::delete('meeting-notes/{meetingNote}', [MeetingNoteController::class, 'destroy'])->name('meeting-notes.destroy');
 
-    // Activity feed
-    Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
+    // Team tasksheet (daily grid; feedback column is lead-only)
+    Route::get('tasksheet', [TasksheetController::class, 'index'])->name('tasksheet.index');
+    Route::put('tasksheet/entries', [TasksheetController::class, 'upsert'])->name('tasksheet.entries.upsert');
 
     /*
      | User management — Admins and CTOs only.

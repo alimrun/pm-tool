@@ -3,7 +3,11 @@
     <x-slot name="header">
         <div>
             <p class="text-xs text-slate-400">
-                <a href="{{ route('releases.show', $task->release) }}" class="hover:text-indigo-600">{{ $task->release->name }}</a>
+                @if (auth()->user()->hasLimitedAccess())
+                    <span>{{ $task->release->name }}</span>
+                @else
+                    <a href="{{ route('releases.show', $task->release) }}" class="hover:text-indigo-600">{{ $task->release->name }}</a>
+                @endif
                 @if ($task->isSubtask() && $task->parent)
                     <span class="mx-1">/</span>
                     <a href="{{ route('tasks.show', $task->parent) }}" class="hover:text-indigo-600">{{ $task->parent->title }}</a>
@@ -118,7 +122,11 @@
             </div>
 
             <div>
-                <a href="{{ route('releases.show', $task->release) }}" class="text-sm text-slate-500 hover:text-indigo-600">← Back to release</a>
+                @if (auth()->user()->hasLimitedAccess())
+                    <a href="{{ route('board.index', ['release_id' => $task->release_id]) }}" class="text-sm text-slate-500 hover:text-indigo-600">← Back to board</a>
+                @else
+                    <a href="{{ route('releases.show', $task->release) }}" class="text-sm text-slate-500 hover:text-indigo-600">← Back to release</a>
+                @endif
             </div>
         </div>
     </div>

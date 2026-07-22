@@ -84,6 +84,22 @@ class User extends Authenticatable
         return $this->canManageReleases();
     }
 
+    /** Leads (admin, CTO, team lead) may correct any tasksheet row and see lead-only feedback. */
+    public function isLead(): bool
+    {
+        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_CTO, self::ROLE_TEAM_LEAD], true);
+    }
+
+    /**
+     * Developers and QA work from the board/calendar/notes/meetings/tasksheet
+     * only — planning surfaces (releases, projects, teams, activity) are off
+     * limits and their dashboard is the personal member dashboard.
+     */
+    public function hasLimitedAccess(): bool
+    {
+        return in_array($this->role, [self::ROLE_DEVELOPER, self::ROLE_QA], true);
+    }
+
     public function isActive(): bool
     {
         return $this->deactivated_at === null;

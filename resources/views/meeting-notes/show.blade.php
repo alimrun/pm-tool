@@ -39,7 +39,11 @@
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Release</dt>
                             <dd class="mt-1 text-sm">
-                                <a href="{{ route('releases.show', $meetingNote->release) }}" class="text-brand-600 hover:underline">{{ $meetingNote->release->name }}</a>
+                                @if (auth()->user()->hasLimitedAccess())
+                                    <span class="text-slate-800">{{ $meetingNote->release->name }}</span>
+                                @else
+                                    <a href="{{ route('releases.show', $meetingNote->release) }}" class="text-brand-600 hover:underline">{{ $meetingNote->release->name }}</a>
+                                @endif
                             </dd>
                         </div>
                     @endif

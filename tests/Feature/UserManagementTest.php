@@ -121,17 +121,20 @@ class UserManagementTest extends TestCase
 
         $qa = $this->user(User::ROLE_QA);
 
-        // Add a task, then "check" it by moving to done.
-        $this->actingAs($qa)->post(route('releases.tasks.store', $release), ['title' => 'Verify build'])->assertRedirect();
+        // QA works from the board: add a task there, then "check" it by moving to done.
+        $this->actingAs($qa)->post(route('board.tasks.store'), [
+            'release_id' => $release->id, 'title' => 'Verify build', 'status' => 'todo',
+        ])->assertRedirect();
         $task = Task::first();
         $this->actingAs($qa)->patch(route('tasks.status', $task), ['status' => 'done'])->assertRedirect();
         $this->assertSame('done', $task->fresh()->status);
 
-        // And comment.
-        $this->actingAs($qa)->post(route('releases.comments.store', $release), ['body' => 'Looks good'])->assertRedirect();
-        $this->assertSame(1, $release->comments()->count());
+        // And comment — on the task (release pages are off limits for QA).
+        $this->actingAs($qa)->post(route('tasks.comments.store', $task), ['body' => 'Looks good'])->assertRedirect();
+        $this->assertSame(1, $task->comments()->count());
 
-        // But cannot edit release structure.
+        // Release surfaces are forbidden for QA (dev-qa-restricted-access).
+        $this->actingAs($qa)->post(route('releases.comments.store', $release), ['body' => 'nope'])->assertForbidden();
         $this->actingAs($qa)->get(route('releases.edit', $release))->assertForbidden();
     }
 }

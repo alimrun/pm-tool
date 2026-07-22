@@ -2,8 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Event;
 use App\Models\Project;
 use App\Models\Release;
+use App\Models\Task;
+use App\Models\TasksheetEntry;
 use App\Models\Team;
 use App\Services\OverlapChecker;
 use App\Support\Timeline;
@@ -15,6 +18,12 @@ class DashboardController extends Controller
 {
     public function __invoke(Request $request, OverlapChecker $overlap): View
     {
+        // Developers/QA get a personal "what am I doing today" dashboard
+        // instead of the release-planning timeline.
+        if ($request->user()->hasLimitedAccess()) {
+            return $this->memberDashboard($request);
+        }
+
         $year = (int) $request->integer('year', (int) now()->year);
         $quarter = $request->filled('quarter') ? (int) $request->integer('quarter') : null;
         $projectId = $request->filled('project_id') ? (int) $request->integer('project_id') : null;
@@ -60,6 +69,45 @@ class DashboardController extends Controller
             'years' => $this->availableYears($year),
             'projects' => Project::orderBy('name')->get(),
             'teams' => Team::orderBy('name')->get(),
+        ]);
+    }
+
+    private function memberDashboard(Request $request): View
+    {
+        $user = $request->user();
+
+        // Open tasks assigned to me — most urgent first, undated last.
+        $tasks = Task::with('release')
+            ->where('assignee_id', $user->id)
+            ->where('status', '!=', 'done')
+            ->orderByRaw('due_date is null')
+            ->orderBy('due_date')
+            ->orderBy('id')
+            ->get();
+
+        // My tasksheet status for today, one line per team.
+        $teams = $user->teams()->orderBy('name')->get();
+        $sheetEntries = TasksheetEntry::where('user_id', $user->id)
+            ->whereIn('team_id', $teams->pluck('id'))
+            ->whereDate('date', today()->toDateString())
+            ->get()
+            ->keyBy('team_id');
+
+        // Meetings I'm attending (or created) in the next 14 days.
+        $meetings = Event::where('type', 'meeting')
+            ->whereBetween('starts_at', [now(), now()->addDays(14)])
+            ->where(fn ($q) => $q
+                ->whereHas('attendees', fn ($a) => $a->whereKey($user->id))
+                ->orWhere('created_by', $user->id))
+            ->orderBy('starts_at')
+            ->limit(8)
+            ->get();
+
+        return view('dashboard-member', [
+            'tasks' => $tasks,
+            'teams' => $teams,
+            'sheetEntries' => $sheetEntries,
+            'meetings' => $meetings,
         ]);
     }
 

@@ -5,8 +5,10 @@
                 <h2 class="page-title">Board</h2>
                 @if ($release)
                     <p class="mt-1 text-sm text-slate-500">
-                        {{ $release->name }} ·
-                        <a href="{{ route('releases.show', $release) }}" class="text-indigo-600 hover:underline">back to release</a>
+                        {{ $release->name }}
+                        @unless (auth()->user()->hasLimitedAccess())
+                            · <a href="{{ route('releases.show', $release) }}" class="text-indigo-600 hover:underline">back to release</a>
+                        @endunless
                     </p>
                 @endif
             </div>
