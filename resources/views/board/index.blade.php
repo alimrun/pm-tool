@@ -56,7 +56,9 @@
                             'todo' => 'bg-slate-400',
                             'in_progress' => 'bg-blue-500',
                             'in_review' => 'bg-amber-500',
+                            'recheck' => 'bg-orange-500',
                             'done' => 'bg-emerald-500',
+                            'archive' => 'bg-slate-500',
                             default => 'bg-slate-400',
                         };
                     @endphp

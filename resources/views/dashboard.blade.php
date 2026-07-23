@@ -72,7 +72,9 @@
                     'todo' => '#94a3b8',        // slate-400
                     'in_progress' => '#3b82f6', // blue-500
                     'in_review' => '#f59e0b',   // amber-500
+                    'recheck' => '#f97316',     // orange-500
                     'done' => '#10b981',        // emerald-500
+                    'archive' => '#64748b',     // slate-500
                 ];
             @endphp
 

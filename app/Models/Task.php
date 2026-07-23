@@ -29,7 +29,9 @@ class Task extends Model
         'todo' => 'To Do',
         'in_progress' => 'In Progress',
         'in_review' => 'In Review',
+        'recheck' => 'Recheck',
         'done' => 'Done',
+        'archive' => 'Archive',
     ];
 
     /** @var array<string, string> */
@@ -37,8 +39,13 @@ class Task extends Model
         'todo' => 'gray',
         'in_progress' => 'blue',
         'in_review' => 'amber',
+        'recheck' => 'orange',
         'done' => 'emerald',
+        'archive' => 'slate',
     ];
+
+    /** Statuses that count as finished work (delivered and/or filed away). */
+    public const DONE_STATUSES = ['done', 'archive'];
 
     protected static function booted(): void
     {
@@ -111,7 +118,7 @@ class Task extends Model
     public function subtaskProgress(): array
     {
         $total = $this->subtasks->count();
-        $done = $this->subtasks->where('status', 'done')->count();
+        $done = $this->subtasks->whereIn('status', self::DONE_STATUSES)->count();
 
         return ['done' => $done, 'total' => $total];
     }

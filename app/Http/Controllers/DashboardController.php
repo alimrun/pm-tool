@@ -171,7 +171,9 @@ class DashboardController extends Controller
             'statusCounts' => $statusCounts,
             'statusLabels' => Task::STATUSES,
             'taskTotal' => $taskTotal,
-            'donePct' => $taskTotal > 0 ? (int) round($statusCounts['done'] / $taskTotal * 100) : 0,
+            'donePct' => $taskTotal > 0
+                ? (int) round(($statusCounts['done'] + $statusCounts['archive']) / $taskTotal * 100)
+                : 0,
             'teamWorkload' => $teamWorkload,
             'teamWorkloadMax' => collect($teamWorkload)->max('count') ?: 0,
         ];
@@ -184,7 +186,7 @@ class DashboardController extends Controller
         // Open tasks assigned to me — most urgent first, undated last.
         $tasks = Task::with('release')
             ->where('assignee_id', $user->id)
-            ->where('status', '!=', 'done')
+            ->whereNotIn('status', Task::DONE_STATUSES)
             ->orderByRaw('due_date is null')
             ->orderBy('due_date')
             ->orderBy('id')
