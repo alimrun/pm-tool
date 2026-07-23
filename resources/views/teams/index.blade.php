@@ -12,7 +12,53 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="app-container">
+        <div class="app-container space-y-6">
+
+            {{-- Overview --}}
+            @if ($teams->isNotEmpty())
+                @php
+                    $activeTeams = $teams->whereNull('archived_at');
+                    $tTotal = $teams->count();
+                    $tActive = $activeTeams->count();
+                    $tArchived = $tTotal - $tActive;
+                    $tMembers = $teams->sum('members_count');
+                    $tReleases = $teams->sum('releases_count');
+                    $tByReleases = $activeTeams
+                        ->filter(fn ($t) => $t->releases_count > 0)
+                        ->sortByDesc('releases_count')
+                        ->map(fn ($t) => ['label' => $t->name, 'value' => $t->releases_count, 'color' => $t->color])
+                        ->values()->all();
+                    $tByMembers = $activeTeams
+                        ->filter(fn ($t) => $t->members_count > 0)
+                        ->sortByDesc('members_count')
+                        ->map(fn ($t) => ['label' => $t->name, 'value' => $t->members_count, 'color' => $t->color])
+                        ->values()->all();
+                @endphp
+
+                <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    @include('partials.stat-tile', ['label' => 'Teams', 'value' => $tTotal, 'sub' => 'total', 'icon' => 'team', 'tone' => 'brand'])
+                    @include('partials.stat-tile', ['label' => 'Active', 'value' => $tActive, 'sub' => 'delivering', 'icon' => 'team', 'tone' => 'emerald'])
+                    @include('partials.stat-tile', ['label' => 'Members', 'value' => $tMembers, 'sub' => 'assignments across teams', 'icon' => 'users', 'tone' => 'sky'])
+                    @include('partials.stat-tile', ['label' => 'Releases', 'value' => $tReleases, 'sub' => 'across all teams', 'icon' => 'rocket', 'tone' => 'amber'])
+                </div>
+
+                <div class="grid gap-4 lg:grid-cols-2">
+                    @include('partials.hbar-chart', [
+                        'title' => 'Releases by team',
+                        'subtitle' => 'Active teams, busiest first',
+                        'rows' => $tByReleases,
+                        'emptyText' => 'No releases assigned to active teams yet.',
+                    ])
+                    @include('partials.hbar-chart', [
+                        'title' => 'Members by team',
+                        'subtitle' => 'Active teams, largest first',
+                        'rows' => $tByMembers,
+                        'barClass' => 'bg-sky-500',
+                        'emptyText' => 'No members on active teams yet.',
+                    ])
+                </div>
+            @endif
+
             <div class="card overflow-hidden">
                 @if ($teams->isEmpty())
                     <div class="p-12 text-center">

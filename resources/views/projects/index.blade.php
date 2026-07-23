@@ -12,7 +12,38 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="app-container">
+        <div class="app-container space-y-6">
+
+            {{-- Overview --}}
+            @if ($projects->isNotEmpty())
+                @php
+                    $activeProjects = $projects->whereNull('archived_at');
+                    $pTotal = $projects->count();
+                    $pActive = $activeProjects->count();
+                    $pArchived = $pTotal - $pActive;
+                    $pReleases = $projects->sum('releases_count');
+                    $pByReleases = $activeProjects
+                        ->filter(fn ($p) => $p->releases_count > 0)
+                        ->sortByDesc('releases_count')
+                        ->map(fn ($p) => ['label' => $p->name, 'value' => $p->releases_count, 'color' => $p->color])
+                        ->values()->all();
+                @endphp
+
+                <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    @include('partials.stat-tile', ['label' => 'Projects', 'value' => $pTotal, 'sub' => 'total', 'icon' => 'folder', 'tone' => 'brand'])
+                    @include('partials.stat-tile', ['label' => 'Active', 'value' => $pActive, 'sub' => 'in progress', 'icon' => 'folder', 'tone' => 'emerald'])
+                    @include('partials.stat-tile', ['label' => 'Archived', 'value' => $pArchived, 'sub' => 'shelved', 'icon' => 'archive', 'tone' => 'slate'])
+                    @include('partials.stat-tile', ['label' => 'Releases', 'value' => $pReleases, 'sub' => 'across all projects', 'icon' => 'rocket', 'tone' => 'sky'])
+                </div>
+
+                @include('partials.hbar-chart', [
+                    'title' => 'Releases by project',
+                    'subtitle' => 'Active projects, busiest first',
+                    'rows' => $pByReleases,
+                    'emptyText' => 'No releases assigned to active projects yet.',
+                ])
+            @endif
+
             <div class="card overflow-hidden">
                 @if ($projects->isEmpty())
                     <div class="p-12 text-center">

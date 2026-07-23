@@ -27,10 +27,28 @@ class UserController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Overview reflects the whole directory, independent of the filters above.
+        $everyone = User::query()->get(['id', 'role', 'deactivated_at']);
+        $roleDistribution = collect(User::ROLES)
+            ->map(fn ($label, $role) => [
+                'role' => $role,
+                'label' => $label,
+                'count' => $everyone->where('role', $role)->count(),
+            ])
+            ->values()->all();
+        $stats = [
+            'total' => $everyone->count(),
+            'active' => $everyone->whereNull('deactivated_at')->count(),
+            'inactive' => $everyone->whereNotNull('deactivated_at')->count(),
+            'engineers' => $everyone->whereIn('role', [User::ROLE_DEVELOPER, User::ROLE_QA])->count(),
+        ];
+
         return view('users.index', [
             'users' => $users,
             'roles' => User::ROLES,
             'filters' => compact('search', 'role', 'status'),
+            'stats' => $stats,
+            'roleDistribution' => $roleDistribution,
         ]);
     }
 

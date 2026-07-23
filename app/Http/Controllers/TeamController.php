@@ -15,7 +15,7 @@ class TeamController extends Controller
 {
     public function index(): View
     {
-        $teams = Team::withCount('releases')
+        $teams = Team::withCount(['releases', 'members'])
             ->orderByRaw('archived_at is not null')
             ->orderBy('name')
             ->get();
