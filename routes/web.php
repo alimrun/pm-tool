@@ -8,6 +8,7 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\QuickLinkController;
 use App\Http\Controllers\ReleaseController;
 use App\Http\Controllers\ReleaseDocumentController;
 use App\Http\Controllers\MeetingNoteController;
@@ -153,6 +154,11 @@ Route::middleware('auth')->group(function () {
     Route::get('meeting-notes/{meetingNote}/edit', [MeetingNoteController::class, 'edit'])->name('meeting-notes.edit');
     Route::put('meeting-notes/{meetingNote}', [MeetingNoteController::class, 'update'])->name('meeting-notes.update');
     Route::delete('meeting-notes/{meetingNote}', [MeetingNoteController::class, 'destroy'])->name('meeting-notes.destroy');
+
+    // Quick links (drawer; limited roles are private-only)
+    Route::post('quick-links', [QuickLinkController::class, 'store'])->name('quick-links.store');
+    Route::put('quick-links/{quickLink}', [QuickLinkController::class, 'update'])->name('quick-links.update');
+    Route::delete('quick-links/{quickLink}', [QuickLinkController::class, 'destroy'])->name('quick-links.destroy');
 
     // Team tasksheet (daily grid; feedback column is lead-only)
     Route::get('tasksheet', [TasksheetController::class, 'index'])->name('tasksheet.index');

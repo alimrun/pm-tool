@@ -110,14 +110,20 @@ class ReleaseCompletionTest extends TestCase
 
     public function test_releases_index_filters_by_status(): void
     {
-        $this->release(['name' => 'Ongoing One']);
-        $this->release(['name' => 'Done One', 'completed_at' => now()]);
+        $ongoing = $this->release(['name' => 'Ongoing One']);
+        $done = $this->release(['name' => 'Done One', 'completed_at' => now()]);
         $user = User::factory()->create();
 
+        // Assert on the row links — ongoing release *names* legitimately appear
+        // on every page via the quick-links drawer's release dropdown.
         $this->actingAs($user)->get(route('releases.index', ['status' => 'completed']))
-            ->assertOk()->assertSee('Done One')->assertDontSee('Ongoing One');
+            ->assertOk()
+            ->assertSee('/releases/'.$done->id, false)
+            ->assertDontSee('/releases/'.$ongoing->id, false);
 
         $this->actingAs($user)->get(route('releases.index', ['status' => 'active']))
-            ->assertOk()->assertSee('Ongoing One')->assertDontSee('Done One');
+            ->assertOk()
+            ->assertSee('/releases/'.$ongoing->id, false)
+            ->assertDontSee('/releases/'.$done->id, false);
     }
 }

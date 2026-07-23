@@ -137,6 +137,8 @@ class ReleaseController extends Controller
             'conflicts' => $conflicts,
             'history' => $history,
             'users' => $users,
+            'releaseLinks' => $release->quickLinks()->with('author')
+                ->visibleTo(request()->user())->get(),
         ]);
     }
 

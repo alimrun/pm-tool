@@ -207,6 +207,56 @@
                             @endif
                         </div>
                     </div>
+
+                    {{-- Links --}}
+                    <div class="card">
+                        <div class="border-b border-slate-100 px-6 py-4">
+                            <h3 class="text-sm font-semibold text-slate-700">Links ({{ $releaseLinks->count() }})</h3>
+                        </div>
+                        <div class="space-y-4 p-5 sm:p-6">
+                            @if ($releaseLinks->isEmpty())
+                                <p class="text-sm text-slate-400">No links for this release yet.</p>
+                            @else
+                                <ul class="divide-y divide-slate-100">
+                                    @foreach ($releaseLinks as $link)
+                                        <li class="flex items-center justify-between gap-3 py-2 first:pt-0 last:pb-0">
+                                            <div class="min-w-0">
+                                                <a href="{{ $link->url }}" target="_blank" rel="noopener"
+                                                   class="block truncate text-sm font-medium text-slate-800 hover:text-brand-700">{{ $link->label }}</a>
+                                                <p class="mt-0.5 text-xs text-slate-400">
+                                                    {{ $link->author->name ?? 'Unknown' }}
+                                                    @if (! $link->isShared()) · Private @endif
+                                                </p>
+                                            </div>
+                                            @can('delete', $link)
+                                                <form method="POST" action="{{ route('quick-links.destroy', $link) }}" data-confirm="Delete this link?" data-confirm-verb="Delete">
+                                                    @csrf @method('DELETE')
+                                                    <button class="rounded p-1 text-slate-400 hover:bg-rose-50 hover:text-rose-600" aria-label="Delete {{ $link->label }}">
+                                                        <x-icon name="trash" class="h-3.5 w-3.5" />
+                                                    </button>
+                                                </form>
+                                            @endcan
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            @endif
+
+                            {{-- Add a link to this release --}}
+                            <form method="POST" action="{{ route('quick-links.store') }}" class="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-4">
+                                @csrf
+                                <input type="hidden" name="release_id" value="{{ $release->id }}">
+                                <input name="label" type="text" required maxlength="100" placeholder="Label" class="field-input !mt-0 w-36 flex-none">
+                                <input name="url" type="url" required placeholder="https://…" class="field-input !mt-0 min-w-0 flex-1">
+                                <select name="visibility" aria-label="Visibility" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                                    <option value="shared">Shared</option>
+                                    <option value="private">Private</option>
+                                </select>
+                                <button class="btn-secondary btn-sm">Add link</button>
+                            </form>
+                            @error('label') <p class="field-error">{{ $message }}</p> @enderror
+                            @error('url') <p class="field-error">{{ $message }}</p> @enderror
+                        </div>
+                    </div>
                 </div>
 
                 {{-- ============ SIDEBAR ============ --}}

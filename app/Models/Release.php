@@ -158,6 +158,12 @@ class Release extends Model
         return $this->hasMany(MeetingNote::class)->orderByDesc('meeting_date')->orderByDesc('id');
     }
 
+    /** Quick links attached to this release, newest first. */
+    public function quickLinks(): HasMany
+    {
+        return $this->hasMany(QuickLink::class)->orderByDesc('id');
+    }
+
     public function quarterLabel(): string
     {
         return 'Q'.$this->quarter;

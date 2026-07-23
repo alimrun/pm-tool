@@ -60,6 +60,9 @@
             </main>
         </div>
 
+        {{-- Quick-links slide-over (data via view composer) --}}
+        @include('partials.quick-links-drawer')
+
         {{-- Floating toasts + confirmation modal --}}
         @include('layouts.toasts')
         @include('layouts.confirm')
