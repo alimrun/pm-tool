@@ -89,7 +89,7 @@
                         </span>
                     </div>
                     <p class="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{{ $analytics['active'] }}</p>
-                    <p class="mt-1 text-xs text-slate-400">ongoing in {{ $analytics['year'] }}</p>
+                    <p class="mt-1 text-xs text-slate-400">ongoing in {{ $analytics['periodLabel'] }}</p>
                 </div>
 
                 {{-- Completed --}}
@@ -101,7 +101,7 @@
                         </span>
                     </div>
                     <p class="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{{ $analytics['completedThisYear'] }}</p>
-                    <p class="mt-1 text-xs text-slate-400">shipped in {{ $analytics['year'] }}</p>
+                    <p class="mt-1 text-xs text-slate-400">shipped in {{ $analytics['periodLabel'] }}</p>
                 </div>
 
                 {{-- Upcoming --}}
@@ -179,7 +179,7 @@
                 {{-- Release load by month --}}
                 <div class="card card-pad">
                     <h3 class="text-sm font-semibold text-slate-900">Release load</h3>
-                    <p class="mt-0.5 text-xs text-slate-400">Releases in flight each month · {{ $analytics['year'] }}</p>
+                    <p class="mt-0.5 text-xs text-slate-400">Releases in flight each month · {{ $analytics['periodLabel'] }}</p>
 
                     @php $mMax = $analytics['monthlyMax']; @endphp
                     <div class="mt-5">
@@ -289,27 +289,50 @@
                                         <div class="pointer-events-none absolute inset-y-0 border-l border-slate-100" style="left: {{ $m['offset'] }}%"></div>
                                     @endforeach
 
-                                    <div class="space-y-2">
+                                    <div class="space-y-3">
                                         @foreach ($group['bars'] as $bar)
-                                            @php $release = $bar['release']; @endphp
-                                            <div class="relative h-8">
-                                                <a href="{{ route('releases.show', $release) }}"
-                                                   class="group absolute top-0 flex h-8 items-center overflow-hidden rounded-md shadow-sm ring-1 ring-inset {{ $bar['conflict'] ? 'ring-2 ring-amber-500' : 'ring-black/5' }}"
-                                                   style="left: {{ $bar['offset'] }}%; width: {{ max($bar['width'], 2) }}%; background-color: #f1f5f9"
-                                                   title="{{ $release->name }} · {{ $release->start_date->format('M j') }}–{{ $release->end_date->format('M j, Y') }}{{ $bar['conflict'] ? ' · OVERLAP' : '' }}">
-                                                    {{-- phase segments fill the bar --}}
-                                                    @foreach ($bar['phases'] as $phase)
-                                                        <span class="absolute top-0 h-8"
-                                                              style="left: {{ $phase['offset'] }}%; width: {{ $phase['width'] }}%; background-color: {{ $phase['color'] }}"
-                                                              title="{{ $phase['label'] }}: {{ $phase['start']->format('M j') }}–{{ $phase['end']->format('M j') }}"></span>
-                                                    @endforeach
-                                                    <span class="relative z-10 truncate px-2 text-[11px] font-medium text-white drop-shadow-sm">
-                                                        {{ $release->name }}
+                                            @php
+                                                $release = $bar['release'];
+                                                $barLeft = $bar['offset'];
+                                                $barWidth = max($bar['width'], 2);
+                                                $barEnd = min($barLeft + $barWidth, 100);
+                                                // Late-in-range bars anchor their caption to the right edge so
+                                                // the date text extends into free space instead of off-screen.
+                                                $anchorRight = $barEnd > 65;
+                                                $sameYear = $release->start_date->year === $release->end_date->year;
+                                                $startFmt = $sameYear ? $release->start_date->format('M j') : $release->start_date->format('M j, Y');
+                                                $dateRange = $startFmt.' – '.$release->end_date->format('M j, Y');
+                                            @endphp
+                                            <div class="relative">
+                                                {{-- bar --}}
+                                                <div class="relative h-8">
+                                                    <a href="{{ route('releases.show', $release) }}"
+                                                       class="group absolute top-0 flex h-8 items-center overflow-hidden rounded-md shadow-sm ring-1 ring-inset {{ $bar['conflict'] ? 'ring-2 ring-amber-500' : 'ring-black/5' }}"
+                                                       style="left: {{ $barLeft }}%; width: {{ $barWidth }}%; background-color: #f1f5f9"
+                                                       title="{{ $release->name }} · {{ $dateRange }}{{ $bar['conflict'] ? ' · OVERLAP' : '' }}">
+                                                        {{-- phase segments fill the bar --}}
+                                                        @foreach ($bar['phases'] as $phase)
+                                                            <span class="absolute top-0 h-8"
+                                                                  style="left: {{ $phase['offset'] }}%; width: {{ $phase['width'] }}%; background-color: {{ $phase['color'] }}"
+                                                                  title="{{ $phase['label'] }}: {{ $phase['start']->format('M j') }}–{{ $phase['end']->format('M j') }}"></span>
+                                                        @endforeach
+                                                        <span class="relative z-10 truncate px-2 text-[11px] font-medium text-white drop-shadow-sm">
+                                                            {{ $release->name }}
+                                                        </span>
+                                                        @if ($bar['conflict'])
+                                                            <span class="relative z-10 ml-auto mr-1 flex-none rounded-full bg-white/90 px-1 text-[10px] font-bold text-amber-700">!</span>
+                                                        @endif
+                                                    </a>
+                                                </div>
+
+                                                {{-- start – end dates, aligned to the bar --}}
+                                                <div class="pointer-events-none relative mt-1 h-3.5">
+                                                    <span class="absolute top-0 inline-flex items-center gap-1 whitespace-nowrap text-[10px] font-medium leading-none text-slate-500 tabular"
+                                                          style="{{ $anchorRight ? 'right: '.(100 - $barEnd).'%' : 'left: '.$barLeft.'%' }}">
+                                                        <svg class="h-2.5 w-2.5 flex-none text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M6 2a1 1 0 00-1 1v1H4a2 2 0 00-2 2v10a2 2 0 002 2h12a2 2 0 002-2V6a2 2 0 00-2-2h-1V3a1 1 0 10-2 0v1H7V3a1 1 0 00-1-1zm0 5a1 1 0 000 2h8a1 1 0 100-2H6z" clip-rule="evenodd"/></svg>
+                                                        {{ $dateRange }}
                                                     </span>
-                                                    @if ($bar['conflict'])
-                                                        <span class="relative z-10 ml-auto mr-1 flex-none rounded-full bg-white/90 px-1 text-[10px] font-bold text-amber-700">!</span>
-                                                    @endif
-                                                </a>
+                                                </div>
                                             </div>
                                         @endforeach
                                     </div>

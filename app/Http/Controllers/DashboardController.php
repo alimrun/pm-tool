@@ -61,7 +61,7 @@ class DashboardController extends Controller
             'months' => Timeline::monthColumns($rangeStart, $rangeEnd),
             'rangeStart' => $rangeStart,
             'rangeEnd' => $rangeEnd,
-            'analytics' => $this->analytics($year, $projectId, $teamId, $conflicts, $releases),
+            'analytics' => $this->analytics($year, $quarter, $rangeStart, $rangeEnd, $projectId, $teamId, $conflicts, $releases),
             'phaseColors' => Release::PHASE_COLORS,
             'phaseLabels' => Release::PHASES,
             'hasConflicts' => in_array(true, $conflicts, true),
@@ -87,37 +87,40 @@ class DashboardController extends Controller
      * @param  \Illuminate\Support\Collection<int, Release>  $timelineReleases
      * @return array<string, mixed>
      */
-    private function analytics(int $year, ?int $projectId, ?int $teamId, array $conflicts, $timelineReleases): array
+    private function analytics(int $year, ?int $quarter, Carbon $rangeStart, Carbon $rangeEnd, ?int $projectId, ?int $teamId, array $conflicts, $timelineReleases): array
     {
-        $yStart = Carbon::create($year, 1, 1)->startOfDay();
-        $yEnd = Carbon::create($year, 12, 31)->endOfDay();
+        $periodLabel = $quarter !== null ? 'Q'.$quarter.' '.$year : (string) $year;
 
-        // Every release whose window touches the selected year (+ filters). Kept in
-        // memory so the monthly-load and team-workload series need no extra queries.
-        $yearReleases = Release::query()
+        // Every release whose window overlaps the selected range (+ filters), so the
+        // cards and charts match the timeline for the same year/quarter/project/team.
+        $rangeReleases = Release::query()
             ->with('team:id,name,color')
-            ->whereDate('start_date', '<=', $yEnd->toDateString())
-            ->whereDate('end_date', '>=', $yStart->toDateString())
+            ->whereDate('start_date', '<=', $rangeEnd->toDateString())
+            ->whereDate('end_date', '>=', $rangeStart->toDateString())
             ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
             ->when($teamId, fn ($q) => $q->where('team_id', $teamId))
             ->get();
 
-        $ongoing = $yearReleases->whereNull('completed_at');
+        $ongoing = $rangeReleases->whereNull('completed_at');
 
-        // Release load: how many releases are in flight during each calendar month.
+        // Release load: how many releases are in flight during each month the range spans
+        // (12 columns for a whole year, 3 for a single quarter).
         $monthly = [];
-        for ($m = 1; $m <= 12; $m++) {
-            $ms = Carbon::create($year, $m, 1)->startOfDay();
-            $me = $ms->copy()->endOfMonth();
+        $cursor = $rangeStart->copy()->startOfMonth();
+        $lastMonth = $rangeEnd->copy()->startOfMonth();
+        while ($cursor <= $lastMonth) {
+            $ms = $cursor->copy()->startOfMonth();
+            $me = $cursor->copy()->endOfMonth();
             $monthly[] = [
                 'label' => $ms->format('M'),
-                'count' => $yearReleases->filter(
+                'count' => $rangeReleases->filter(
                     fn (Release $r) => $r->start_date <= $me && $r->end_date >= $ms
                 )->count(),
-                'current' => $m === (int) now()->month && $year === (int) now()->year,
+                'current' => $ms->month === (int) now()->month && $ms->year === (int) now()->year,
             ];
+            $cursor->addMonth();
         }
-        $monthlyMax = max(array_column($monthly, 'count'));
+        $monthlyMax = max(array_column($monthly, 'count') ?: [0]);
 
         // Delivery: task-status mix across the ongoing releases in view.
         $statusOrder = array_keys(Task::STATUSES);
@@ -152,9 +155,11 @@ class DashboardController extends Controller
 
         return [
             'year' => $year,
+            'periodLabel' => $periodLabel,
             'active' => $ongoing->count(),
             'completedThisYear' => Release::completed()
-                ->whereYear('completed_at', $year)
+                ->whereDate('completed_at', '>=', $rangeStart->toDateString())
+                ->whereDate('completed_at', '<=', $rangeEnd->toDateString())
                 ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
                 ->when($teamId, fn ($q) => $q->where('team_id', $teamId))
                 ->count(),
