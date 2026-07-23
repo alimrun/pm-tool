@@ -43,3 +43,16 @@
 - [x] 7.2 Row edit form: Trix editors for the rich fields (unique input ids per row), keep number inputs for points/counts; grid renders sanitized HTML with `prose-notes`
 - [x] 7.3 `TasksheetEntryRequest`: bump rich-field max to 20000
 - [x] 7.4 Feature tests: script tags stripped from plan, empty-markup field stored as null (stays "not filled"/partial), integers still enforced
+
+## 8. Revision: removal freezes but preserves the record (soft membership leave)
+
+- [x] 8.1 `left_at` on `team_user`; `Team::members()` scoped to current, `Team::memberRecords()` for history; remove stamps `left_at`, add restores it
+- [x] 8.2 Tasksheet rows include leavers for dates up to their leave date (auto-absent history intact); policy + view require current membership for self-edits
+- [x] 8.3 Feature tests: history up to removal (entries + auto-absent) visible, post-removal dates exclude the leaver, fill/edit locked for the leaver but not for leads or their other teams, re-add restores filling
+
+## 9. Revision: per-user tasksheet history view
+
+- [x] 9.1 `tasksheet/users/{member}` route (`withTrashed` binding) + `TasksheetController@user`: lead-or-self gate, team + date-range filters, entries newest first
+- [x] 9.2 `tasksheet/user.blade.php`: filter bar, per-date rows (rich cells, leave badge, late hint), date links to the team sheet, lead-only feedback column; linked from grid member names and the member dashboard "History →"
+- [x] 9.3 Feature tests: lead filtered view, self view (no feedback), other member 403, deleted member's history reachable
+- [x] 9.4 Users list (admin/CTO): per-row "Tasksheet history" action for developer/QA users

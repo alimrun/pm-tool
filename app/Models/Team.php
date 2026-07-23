@@ -26,10 +26,16 @@ class Team extends Model
         return $this->hasMany(Release::class);
     }
 
-    /** Members of this team. */
+    /** Current members of this team (people who have left are excluded). */
     public function members(): BelongsToMany
     {
-        return $this->belongsToMany(User::class)->withTimestamps();
+        return $this->memberRecords()->wherePivotNull('left_at');
+    }
+
+    /** All membership records, including people who have left (pivot: left_at). */
+    public function memberRecords(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withTimestamps()->withPivot('left_at');
     }
 
     public function isArchived(): bool

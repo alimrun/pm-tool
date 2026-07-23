@@ -157,6 +157,9 @@ Route::middleware('auth')->group(function () {
     // Team tasksheet (daily grid; feedback column is lead-only)
     Route::get('tasksheet', [TasksheetController::class, 'index'])->name('tasksheet.index');
     Route::put('tasksheet/entries', [TasksheetController::class, 'upsert'])->name('tasksheet.entries.upsert');
+    Route::get('tasksheet/users/{member}', [TasksheetController::class, 'user'])
+        ->name('tasksheet.user')
+        ->withTrashed(); // history pages must resolve deleted users too
 
     /*
      | User management — Admins and CTOs only.

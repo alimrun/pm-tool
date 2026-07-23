@@ -96,7 +96,7 @@ class TasksheetEntry extends Model
 
     public function member(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'user_id');
+        return $this->belongsTo(User::class, 'user_id')->withTrashed();
     }
 
     public function team(): BelongsTo

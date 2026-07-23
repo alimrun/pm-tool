@@ -33,7 +33,7 @@
                     </div>
                     <div>
                         <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Written by</dt>
-                        <dd class="mt-1 text-sm text-slate-800">{{ $meetingNote->author->name ?? 'Unknown' }}</dd>
+                        <dd class="mt-1 text-sm text-slate-800">{{ $meetingNote->author->name ?? 'Unknown' }}@include('partials.user-tag', ['tagUser' => $meetingNote->author])</dd>
                     </div>
                     @if ($meetingNote->release)
                         <div>

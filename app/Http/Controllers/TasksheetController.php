@@ -34,6 +34,8 @@ class TasksheetController extends Controller
         $rowUsers = collect();
         $entries = collect();
 
+        $viewerIsMember = false;
+
         if ($team) {
             $entries = TasksheetEntry::with('member')
                 ->where('team_id', $team->id)
@@ -41,18 +43,26 @@ class TasksheetController extends Controller
                 ->get()
                 ->keyBy('user_id');
 
-            // Rows: current dev/QA members ∪ anyone with a saved entry that day
-            // (former members keep their historical rows).
-            $members = $team->members()
+            // Rows: dev/QA whose membership covers the viewed date — current
+            // members, plus people who left / were deleted / were deactivated
+            // on or after that date (their history, including auto-absent
+            // days, stays visible) — ∪ anyone with a saved entry that day.
+            $dayStr = $day->toDateString();
+            $members = $team->memberRecords()
+                ->withTrashed()
                 ->whereIn('role', [User::ROLE_DEVELOPER, User::ROLE_QA])
-                ->active()
-                ->get();
+                ->get()
+                ->filter(fn (User $u) => ($u->pivot->left_at === null || Carbon::parse($u->pivot->left_at)->toDateString() >= $dayStr)
+                    && ($u->deleted_at === null || $u->deleted_at->toDateString() >= $dayStr)
+                    && ($u->deactivated_at === null || $u->deactivated_at->toDateString() >= $dayStr));
 
             $rowUsers = $members
                 ->concat($entries->map(fn (TasksheetEntry $e) => $e->member)->filter())
                 ->unique('id')
                 ->sortBy('name')
                 ->values();
+
+            $viewerIsMember = $team->members()->whereKey($viewer->id)->exists();
         }
 
         return view('tasksheet.index', [
@@ -65,6 +75,40 @@ class TasksheetController extends Controller
             'isPast' => $isPast,
             'rowUsers' => $rowUsers,
             'entries' => $entries,
+            'viewerIsMember' => $viewerIsMember,
+        ]);
+    }
+
+    /** Per-user tasksheet history, filterable by team and date range. */
+    public function user(User $member): View
+    {
+        $viewer = request()->user();
+        abort_unless($viewer->isLead() || $viewer->id === $member->id, 403);
+
+        $teamFilter = request()->integer('team') ?: null;
+        $from = ($f = request('from')) ? Carbon::parse($f)->toDateString() : null;
+        $to = ($t = request('to')) ? Carbon::parse($t)->toDateString() : null;
+        if ($from && $to && $from > $to) {
+            [$from, $to] = [$to, $from];
+        }
+
+        $entries = TasksheetEntry::with('team')
+            ->where('user_id', $member->id)
+            ->when($teamFilter, fn ($q) => $q->where('team_id', $teamFilter))
+            ->when($from, fn ($q) => $q->whereDate('date', '>=', $from))
+            ->when($to, fn ($q) => $q->whereDate('date', '<=', $to))
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get();
+
+        return view('tasksheet.user', [
+            'member' => $member,
+            'entries' => $entries,
+            'teams' => Team::whereIn('id', TasksheetEntry::where('user_id', $member->id)->select('team_id'))
+                ->orderBy('name')->get(),
+            'teamFilter' => $teamFilter,
+            'from' => $from,
+            'to' => $to,
         ]);
     }
 

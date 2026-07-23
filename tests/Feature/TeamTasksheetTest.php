@@ -342,6 +342,129 @@ class TeamTasksheetTest extends TestCase
             ->assertDontSee('alert(1)', false);
     }
 
+    public function test_removed_member_history_stays_visible_and_filling_is_locked(): void
+    {
+        $team = $this->team();
+        $dev = $this->member($team);
+        $lead = User::factory()->create(['role' => User::ROLE_TEAM_LEAD]);
+
+        // Filled yesterday, missed the day before.
+        TasksheetEntry::create([
+            'team_id' => $team->id, 'user_id' => $dev->id,
+            'date' => today()->subDay()->toDateString(), 'plan' => 'Old work',
+        ]);
+
+        // Removed today (via the real route → left_at is stamped, not deleted).
+        $this->actingAs($lead)->delete(route('teams.members.destroy', [$team, $dev]))->assertRedirect();
+
+        // Yesterday: filled row still there. Two days ago: auto-absent mark still there.
+        $this->actingAs($lead)->get(route('tasksheet.index', ['team' => $team->id, 'date' => today()->subDay()->toDateString()]))
+            ->assertOk()->assertSee($dev->name)->assertSee('Old work');
+        $this->actingAs($lead)->get(route('tasksheet.index', ['team' => $team->id, 'date' => today()->subDays(2)->toDateString()]))
+            ->assertOk()->assertSee($dev->name)->assertSee('Absent — not filled');
+
+        // After the removal date they are no longer listed.
+        $this->actingAs($lead)->get(route('tasksheet.index', ['team' => $team->id, 'date' => today()->addDay()->toDateString()]))
+            ->assertOk()->assertDontSee($dev->name);
+
+        // The leaver cannot fill a new day (fails team-membership validation)…
+        $this->actingAs($dev)->put(route('tasksheet.entries.upsert'), $this->payload($team, $dev))
+            ->assertSessionHasErrors('user_id');
+        // …nor edit their previously saved row (policy forbids)…
+        $this->actingAs($dev)->put(route('tasksheet.entries.upsert'), $this->payload($team, $dev, [
+            'date' => today()->subDay()->toDateString(), 'plan' => 'rewrite history',
+        ]))->assertForbidden();
+        // …but a lead still can.
+        $this->actingAs($lead)->put(route('tasksheet.entries.upsert'), $this->payload($team, $dev, [
+            'date' => today()->subDay()->toDateString(), 'plan' => 'Lead correction',
+        ]))->assertRedirect();
+        $this->assertStringContainsString('Lead correction', TasksheetEntry::first()->plan);
+    }
+
+    public function test_removal_from_one_team_does_not_affect_the_other(): void
+    {
+        $teamA = $this->team();
+        $teamB = Team::create(['name' => 'Beta', 'color' => '#123456']);
+        $dev = $this->member($teamA);
+        $teamB->members()->attach($dev);
+        $lead = User::factory()->create(['role' => User::ROLE_TEAM_LEAD]);
+
+        $this->actingAs($lead)->delete(route('teams.members.destroy', [$teamA, $dev]))->assertRedirect();
+
+        // Team B still fillable; Team A locked.
+        $this->actingAs($dev)->put(route('tasksheet.entries.upsert'), $this->payload($teamB, $dev))
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->actingAs($dev)->put(route('tasksheet.entries.upsert'), $this->payload($teamA, $dev))
+            ->assertSessionHasErrors('user_id');
+    }
+
+    public function test_readded_member_can_fill_again(): void
+    {
+        $team = $this->team();
+        $dev = $this->member($team);
+        $lead = User::factory()->create(['role' => User::ROLE_TEAM_LEAD]);
+
+        $this->actingAs($lead)->delete(route('teams.members.destroy', [$team, $dev]))->assertRedirect();
+        $this->actingAs($lead)->post(route('teams.members.store', $team), ['user_id' => $dev->id])->assertRedirect();
+
+        $this->actingAs($dev)->put(route('tasksheet.entries.upsert'), $this->payload($team, $dev))
+            ->assertRedirect()->assertSessionHasNoErrors();
+        $this->assertSame(1, TasksheetEntry::count());
+    }
+
+    public function test_lead_views_user_history_with_team_and_date_filters(): void
+    {
+        $teamA = $this->team();
+        $teamB = Team::create(['name' => 'Beta', 'color' => '#123456']);
+        $dev = $this->member($teamA);
+        $teamB->members()->attach($dev);
+        $lead = User::factory()->create(['role' => User::ROLE_TEAM_LEAD]);
+
+        TasksheetEntry::create(['team_id' => $teamA->id, 'user_id' => $dev->id, 'date' => '2026-07-20', 'plan' => 'Alpha work', 'feedback' => 'Lead note']);
+        TasksheetEntry::create(['team_id' => $teamB->id, 'user_id' => $dev->id, 'date' => '2026-07-21', 'plan' => 'Beta work']);
+        TasksheetEntry::create(['team_id' => $teamA->id, 'user_id' => $dev->id, 'date' => '2026-07-01', 'plan' => 'Early work']);
+
+        // Unfiltered: everything, with feedback for the lead.
+        $this->actingAs($lead)->get(route('tasksheet.user', $dev))
+            ->assertOk()->assertSee('Alpha work')->assertSee('Beta work')->assertSee('Early work')->assertSee('Lead note');
+
+        // Team filter.
+        $this->actingAs($lead)->get(route('tasksheet.user', [$dev, 'team' => $teamB->id]))
+            ->assertOk()->assertSee('Beta work')->assertDontSee('Alpha work');
+
+        // Date range filter.
+        $this->actingAs($lead)->get(route('tasksheet.user', [$dev, 'from' => '2026-07-19', 'to' => '2026-07-22']))
+            ->assertOk()->assertSee('Alpha work')->assertSee('Beta work')->assertDontSee('Early work');
+    }
+
+    public function test_member_views_own_history_without_feedback_and_others_are_forbidden(): void
+    {
+        $team = $this->team();
+        $dev = $this->member($team);
+        $other = $this->member($team, User::ROLE_QA);
+
+        TasksheetEntry::create(['team_id' => $team->id, 'user_id' => $dev->id, 'date' => '2026-07-20', 'plan' => 'My work', 'feedback' => 'Private lead note']);
+
+        $this->actingAs($dev)->get(route('tasksheet.user', $dev))
+            ->assertOk()->assertSee('My work')->assertDontSee('Feedback')->assertDontSee('Private lead note');
+
+        $this->actingAs($other)->get(route('tasksheet.user', $dev))->assertForbidden();
+    }
+
+    public function test_deleted_members_history_is_still_reachable(): void
+    {
+        $team = $this->team();
+        $dev = $this->member($team);
+        $lead = User::factory()->create(['role' => User::ROLE_TEAM_LEAD]);
+
+        TasksheetEntry::create(['team_id' => $team->id, 'user_id' => $dev->id, 'date' => '2026-07-20', 'plan' => 'Before deletion']);
+
+        $dev->delete(); // soft delete
+
+        $this->actingAs($lead)->get(route('tasksheet.user', $dev))
+            ->assertOk()->assertSee('Before deletion')->assertSee('Deleted user');
+    }
+
     public function test_tasksheet_requires_auth(): void
     {
         $this->get(route('tasksheet.index'))->assertRedirect(route('login'));

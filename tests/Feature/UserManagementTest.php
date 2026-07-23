@@ -104,6 +104,66 @@ class UserManagementTest extends TestCase
         $this->assertFalse($other->fresh()->isActive());
     }
 
+    public function test_deleted_users_data_stays_visible_with_tag_and_login_is_blocked(): void
+    {
+        $admin = $this->user(User::ROLE_ADMIN);
+        $team = Team::create(['name' => 'T', 'color' => '#0891b2']);
+        $dev = User::factory()->create(['role' => User::ROLE_DEVELOPER, 'name' => 'Gone Person']);
+        $team->members()->attach($dev);
+
+        \App\Models\TasksheetEntry::create([
+            'team_id' => $team->id, 'user_id' => $dev->id,
+            'date' => today()->subDay()->toDateString(), 'plan' => 'Legacy work',
+        ]);
+
+        $this->actingAs($admin)->delete(route('users.destroy', $dev))->assertRedirect();
+
+        // Data still visible on the sheet, tagged.
+        $this->actingAs($admin)
+            ->get(route('tasksheet.index', ['team' => $team->id, 'date' => today()->subDay()->toDateString()]))
+            ->assertOk()
+            ->assertSee('Gone Person')
+            ->assertSee('Legacy work')
+            ->assertSee('Deleted user');
+
+        // Login is blocked (soft-deleted accounts are out of the auth scope).
+        \Illuminate\Support\Facades\Auth::logout();
+        $this->post('/login', ['email' => $dev->email, 'password' => 'password']);
+        $this->assertGuest();
+    }
+
+    public function test_deactivated_users_data_is_tagged(): void
+    {
+        $admin = $this->user(User::ROLE_ADMIN);
+        $team = Team::create(['name' => 'T', 'color' => '#0891b2']);
+        $dev = User::factory()->create(['role' => User::ROLE_DEVELOPER, 'name' => 'Paused Person']);
+        $team->members()->attach($dev);
+
+        \App\Models\TasksheetEntry::create([
+            'team_id' => $team->id, 'user_id' => $dev->id,
+            'date' => today()->subDay()->toDateString(), 'plan' => 'Recent work',
+        ]);
+
+        $this->actingAs($admin)->post(route('users.toggle', $dev))->assertRedirect();
+
+        $this->actingAs($admin)
+            ->get(route('tasksheet.index', ['team' => $team->id, 'date' => today()->subDay()->toDateString()]))
+            ->assertOk()
+            ->assertSee('Paused Person')
+            ->assertSee('Deactivated');
+    }
+
+    public function test_user_list_links_to_tasksheet_history_for_dev_and_qa(): void
+    {
+        $admin = $this->user(User::ROLE_ADMIN);
+        $dev = User::factory()->create(['role' => User::ROLE_DEVELOPER]);
+        $viewer = $this->user(User::ROLE_VIEWER);
+
+        $response = $this->actingAs($admin)->get(route('users.index'))->assertOk();
+        $response->assertSee('tasksheet/users/'.$dev->id, false);
+        $response->assertDontSee('tasksheet/users/'.$viewer->id, false);
+    }
+
     public function test_registration_route_is_disabled(): void
     {
         $this->assertFalse(app('router')->has('register'));

@@ -53,7 +53,10 @@
 
                 {{-- Today's tasksheet --}}
                 <div class="card card-pad">
-                    <h3 class="text-sm font-semibold text-slate-700">Today's tasksheet</h3>
+                    <div class="flex items-center justify-between">
+                        <h3 class="text-sm font-semibold text-slate-700">Today's tasksheet</h3>
+                        <a href="{{ route('tasksheet.user', auth()->user()) }}" class="text-xs font-medium text-brand-600 hover:text-brand-700">History →</a>
+                    </div>
                     @if ($teams->isEmpty())
                         <p class="mt-2 text-sm text-slate-400">You're not on a team yet.</p>
                     @else

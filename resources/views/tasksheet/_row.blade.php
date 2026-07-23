@@ -3,13 +3,18 @@
     /** @var \App\Models\TasksheetEntry|null $entry */
     $viewer = auth()->user();
     $isLeadViewer = $viewer->isLead();
-    $canEdit = $viewer->id === $rowUser->id || $isLeadViewer;
+    // Own row is editable only while still on the team (ex-members are read-only).
+    $canEdit = $isLeadViewer || ($viewer->id === $rowUser->id && ($viewerIsMember ?? false));
     $taskCols = 7; // plan, result, comment, work points, tickets, ticket count, ticket points
 @endphp
 <tbody x-data="{ editing: false }" class="divide-y divide-slate-100 border-t border-slate-100">
     <tr x-show="!editing" class="align-top">
         <td class="px-3 py-3">
-            <div class="font-medium text-slate-800">{{ $rowUser->name }}</div>
+            @if ($isLeadViewer || $viewer->id === $rowUser->id)
+                <a href="{{ route('tasksheet.user', $rowUser) }}" class="font-medium text-slate-800 hover:text-brand-700">{{ $rowUser->name }}</a>@include('partials.user-tag', ['tagUser' => $rowUser])
+            @else
+                <span class="font-medium text-slate-800">{{ $rowUser->name }}</span>@include('partials.user-tag', ['tagUser' => $rowUser])
+            @endif
             <div class="text-xs text-slate-400">{{ $rowUser->roleLabel() }}</div>
             @if ($entry?->wasFilledLate())
                 <div class="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700"

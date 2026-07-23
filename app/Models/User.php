@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
@@ -19,7 +20,7 @@ use Illuminate\Notifications\Notifiable;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, RecordsActivity;
+    use HasFactory, Notifiable, RecordsActivity, SoftDeletes;
 
     public const ROLE_ADMIN = 'admin';
     public const ROLE_CTO = 'cto';
@@ -110,6 +111,22 @@ class User extends Authenticatable
         return self::ROLES[$this->role] ?? ucfirst((string) $this->role);
     }
 
+    /**
+     * Display tag shown next to this user's name on their surviving data
+     * ("Deleted user" / "Deactivated"), or null for a normal active account.
+     */
+    public function statusTag(): ?string
+    {
+        if ($this->trashed()) {
+            return 'Deleted user';
+        }
+        if (! $this->isActive()) {
+            return 'Deactivated';
+        }
+
+        return null;
+    }
+
     public function scopeActive(Builder $query): Builder
     {
         return $query->whereNull('deactivated_at');
@@ -120,10 +137,10 @@ class User extends Authenticatable
         return $this->hasMany(Task::class, 'assignee_id');
     }
 
-    /** Teams this user belongs to. */
+    /** Teams this user currently belongs to (left teams excluded). */
     public function teams(): BelongsToMany
     {
-        return $this->belongsToMany(Team::class)->withTimestamps();
+        return $this->belongsToMany(Team::class)->withTimestamps()->wherePivotNull('left_at');
     }
 
     /** Releases this user is assigned to. */

@@ -50,7 +50,7 @@
                     @endif
                     <div>
                         <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Created by</dt>
-                        <dd class="mt-1 text-sm text-slate-800">{{ $event->creator->name ?? 'Unknown' }}</dd>
+                        <dd class="mt-1 text-sm text-slate-800">{{ $event->creator->name ?? 'Unknown' }}@include('partials.user-tag', ['tagUser' => $event->creator])</dd>
                     </div>
                 </dl>
 

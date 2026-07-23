@@ -102,6 +102,14 @@ class UserController extends Controller
         }
 
         $name = $user->name;
+
+        // Soft delete: the account disappears from listings and can no longer
+        // sign in, but everything they produced stays visible, tagged
+        // "Deleted user". Their team memberships end now (left_at) so sheets
+        // after this date no longer expect them.
+        $user->teams->each(
+            fn ($team) => $team->memberRecords()->updateExistingPivot($user->id, ['left_at' => now()])
+        );
         $user->delete();
 
         return redirect()->route('users.index')

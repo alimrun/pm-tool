@@ -23,6 +23,25 @@ The system SHALL provide a Tasksheet section, reachable from the main navigation
 - **WHEN** a member with a saved entry for a date later leaves the team
 - **THEN** that date's sheet still shows their row and entry
 
+### Requirement: Removal freezes but preserves the member's record
+When a developer or QA member is removed from a team, the system SHALL keep their rows visible on that team's sheets for all dates up to the removal — including automatic absent marks for days they did not fill — and SHALL NOT list them on dates after the removal. From the removal onward the removed member SHALL NOT be able to fill or edit that team's rows (leads still can); membership in other teams is unaffected. Re-adding the member restores their ability to fill.
+
+#### Scenario: History up to removal stays visible
+- **WHEN** a member who filled some days and missed others is removed from a team
+- **THEN** that team's past sheets still show their filled rows and automatic absent marks up to the removal date, and sheets after the removal do not list them
+
+#### Scenario: Removed member cannot fill anymore
+- **WHEN** a removed member attempts to save a row for that team — new or previously saved
+- **THEN** the system refuses
+
+#### Scenario: Other team memberships unaffected
+- **WHEN** a member of two teams is removed from one
+- **THEN** they can still fill the other team's sheet as before
+
+#### Scenario: Re-adding restores filling
+- **WHEN** the member is added back to the team
+- **THEN** they can fill that team's sheet again
+
 ### Requirement: Members fill their own row
 The system SHALL allow a developer or QA team member to save their own row for a team and date (creating it on first save, updating it afterwards). The system SHALL prevent a non-lead user from saving another member's row.
 
@@ -101,6 +120,21 @@ The system SHALL display an automatic "Absent" mark on any developer or QA membe
 #### Scenario: On-time entries carry no late hint
 - **WHEN** an entry created on its sheet date is edited on a later day
 - **THEN** the row shows no late-fill hint
+
+### Requirement: Per-user tasksheet history
+The system SHALL provide a per-user tasksheet history view listing all of that user's rows across teams and dates, newest first, filterable by team and by a meeting-date range. It SHALL be accessible to leads and to the user themselves only; the feedback column stays lead-only. Each row SHALL link to its team's sheet for that date, and the view SHALL resolve deleted users (their history remains browsable).
+
+#### Scenario: Lead browses a member's history with filters
+- **WHEN** a lead opens a member's tasksheet history and filters by team or date range
+- **THEN** only that member's matching rows are shown, newest first
+
+#### Scenario: Member views their own history
+- **WHEN** a developer or QA opens their own history
+- **THEN** it loads, without the feedback column
+
+#### Scenario: Others are forbidden
+- **WHEN** a non-lead user opens another member's history
+- **THEN** the system responds 403
 
 ### Requirement: Tasksheet activity logging
 The system SHALL record tasksheet row saves (create, update, delete) in the activity log with the acting user and the changed fields. The system SHALL NOT include feedback content — neither values nor old→new diffs — in any activity entry.

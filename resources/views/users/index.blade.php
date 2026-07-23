@@ -94,6 +94,9 @@
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="flex items-center justify-end gap-1">
+                                        @if ($user->hasLimitedAccess())
+                                            <x-action-btn icon="list" tone="brand" :href="route('tasksheet.user', $user)" title="Tasksheet history" aria-label="Tasksheet history of {{ $user->name }}" />
+                                        @endif
                                         <x-action-btn icon="pencil" tone="brand" :href="route('users.edit', $user)" title="Edit" aria-label="Edit {{ $user->name }}" />
                                         <form method="POST" action="{{ route('users.toggle', $user) }}">
                                             @csrf
@@ -104,7 +107,7 @@
                                             @endif
                                         </form>
                                         <form method="POST" action="{{ route('users.destroy', $user) }}"
-                                              data-confirm="Delete this user permanently?" data-confirm-verb="Delete">
+                                              data-confirm="Delete this user? They can no longer sign in; their data stays visible tagged “Deleted user”." data-confirm-verb="Delete">
                                             @csrf @method('DELETE')
                                             <x-action-btn icon="trash" tone="rose" title="Delete" aria-label="Delete {{ $user->name }}" />
                                         </form>

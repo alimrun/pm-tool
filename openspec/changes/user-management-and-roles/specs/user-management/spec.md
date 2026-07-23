@@ -30,6 +30,28 @@ The system SHALL allow an Admin or CTO to edit a user's name, email, and role, a
 - **WHEN** a manager sets a new password for a user
 - **THEN** the system stores the new password and the user can log in with it
 
+### Requirement: Deleting a user preserves their contributions
+Deleting a user SHALL be a soft delete: the account can no longer sign in and disappears from user listings and member pickers, but everything the user produced (tasksheet rows, tasks, comments, daily notes, meeting notes, events, activity entries) SHALL remain visible. The user's team memberships end at deletion time.
+
+#### Scenario: Deleted user's data stays visible
+- **WHEN** an admin deletes a user who has tasksheet rows and comments
+- **THEN** those rows and comments remain visible afterwards
+
+#### Scenario: Deleted user cannot sign in
+- **WHEN** someone attempts to log in with a deleted user's credentials
+- **THEN** authentication fails
+
+### Requirement: Departed users are tagged on their data
+The system SHALL label a deleted user's name on their surviving data with a "Deleted user" tag, and a deactivated user's name with a "Deactivated" tag, wherever their contributions are displayed (tasksheet rows, comments, meeting notes, events).
+
+#### Scenario: Deleted user tag
+- **WHEN** a user views data produced by a deleted user
+- **THEN** the author's name carries a "Deleted user" tag
+
+#### Scenario: Deactivated user tag
+- **WHEN** a user views data produced by a deactivated user
+- **THEN** the author's name carries a "Deactivated" tag, and the tag disappears if the account is reactivated
+
 ### Requirement: Deactivate and reactivate accounts
 The system SHALL allow an Admin or CTO to deactivate and reactivate an account. A deactivated user SHALL be unable to log in, and SHALL be signed out if they are deactivated during an active session.
 

@@ -34,3 +34,10 @@
 - [x] 5.1 Seeder: demo CTO, Team Lead, Developer, QA accounts (password `password`)
 - [x] 5.2 Feature tests: admin+CTO can manage users / others 403; duplicate email rejected; deactivated cannot log in; last-admin + self guards; a non-admin role can comment + change task status; register route gone
 - [x] 5.3 Migrate, `npm run build`, run full test suite, live smoke test, then check off tasks and `openspec validate`
+
+## 6. Revision: soft delete + departed-user tags
+
+- [x] 6.1 `SoftDeletes` on `User` (+ `deleted_at` migration); destroy ends team memberships (`left_at`) then soft-deletes; guards (self / last admin) unchanged
+- [x] 6.2 `withTrashed()` on user-bearing relations (tasksheet member, comment user, meeting-note author, note author, event creator, task assignee/creator, activity causer, document uploader)
+- [x] 6.3 `User::statusTag()` + `partials/user-tag` applied on tasksheet rows, comments, meeting notes, events; tasksheet history rows include deleted/deactivated members up to their departure date
+- [x] 6.4 Feature tests: deleted user's data visible with "Deleted user" tag, cannot log in; deactivated tag shown

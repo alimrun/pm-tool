@@ -97,7 +97,8 @@ class TeamController extends Controller
             'user_id' => ['required', Rule::exists('users', 'id')->whereNull('deactivated_at')],
         ]);
 
-        $team->members()->syncWithoutDetaching([$data['user_id']]);
+        // Restores a previous membership (clears left_at) or creates a new one.
+        $team->memberRecords()->syncWithoutDetaching([$data['user_id'] => ['left_at' => null]]);
         $user = User::find($data['user_id']);
 
         return back()->with('success', "{$user->name} added to {$team->name}.");
@@ -105,7 +106,9 @@ class TeamController extends Controller
 
     public function removeMember(Team $team, User $user): RedirectResponse
     {
-        $team->members()->detach($user->id);
+        // Soft leave: keep the membership row so historical records (e.g. the
+        // team's past tasksheets) still know this person was on the team.
+        $team->memberRecords()->updateExistingPivot($user->id, ['left_at' => now()]);
 
         return back()->with('success', "{$user->name} removed from {$team->name}.");
     }

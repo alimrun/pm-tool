@@ -7,7 +7,7 @@
             </div>
             <div class="min-w-0 flex-1">
                 <div class="flex items-center gap-2">
-                    <span class="text-sm font-medium text-slate-800">{{ $comment->user->name ?? 'Unknown' }}</span>
+                    <span class="text-sm font-medium text-slate-800">{{ $comment->user->name ?? 'Unknown' }}</span>@include('partials.user-tag', ['tagUser' => $comment->user])
                     <span class="text-xs text-slate-400">{{ $comment->created_at->diffForHumans() }}</span>
                     @if ($comment->created_at != $comment->updated_at)
                         <span class="text-xs text-slate-300">(edited)</span>
