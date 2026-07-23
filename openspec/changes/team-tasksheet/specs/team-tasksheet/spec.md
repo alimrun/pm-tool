@@ -117,8 +117,19 @@ The system SHALL record tasksheet row saves (create, update, delete) in the acti
 - **WHEN** a lead changes only the feedback on an existing row
 - **THEN** no activity entry is recorded
 
+### Requirement: Rich text cells
+The system SHALL accept rich text for plan, result, comment, tickets, and feedback, sanitizing the HTML before storing it, and SHALL store visually-empty rich-text input as empty (not counting toward a row's filled fields).
+
+#### Scenario: Rich text sanitized
+- **WHEN** a row is saved with rich text containing disallowed HTML (e.g., script tags)
+- **THEN** the disallowed markup is stripped before storage
+
+#### Scenario: Visually-empty markup counts as empty
+- **WHEN** a field is submitted containing only empty markup (e.g., `<div><br></div>`)
+- **THEN** it is stored as empty and does not count as a filled field
+
 ### Requirement: Entry validation
-The system SHALL validate row saves: text fields (plan, result, comment, tickets) are optional with sane length limits; points and counts are optional non-negative integers; the target team, member, and date must be valid, with the member belonging to the team (or having an existing entry for it).
+The system SHALL validate row saves: rich-text fields (plan, result, comment, tickets) are optional with sane length limits; work points, ticket count, and ticket points are optional non-negative integers; the target team, member, and date must be valid, with the member belonging to the team (or having an existing entry for it).
 
 #### Scenario: Negative points rejected
 - **WHEN** a row is saved with a negative work points value

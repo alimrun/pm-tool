@@ -36,3 +36,10 @@
 
 - [x] 6.1 `TasksheetEntry` uses `RecordsActivity`: `activityTitle()` = "{member} · {date}", custom description "tasksheet row", `activityExtraIgnored()` includes `feedback` (plus FK noise) so feedback never reaches the log
 - [x] 6.2 Feature tests: row save records activity with causer; activity properties contain no feedback; feedback-only update records no activity
+
+## 7. Revision: rich-text cells, integer counters
+
+- [x] 7.1 `TasksheetEntry`: rich-text Attribute setters (sanitize; visually-empty → null) for plan/result/comment/tickets/feedback + `html()` render helper
+- [x] 7.2 Row edit form: Trix editors for the rich fields (unique input ids per row), keep number inputs for points/counts; grid renders sanitized HTML with `prose-notes`
+- [x] 7.3 `TasksheetEntryRequest`: bump rich-field max to 20000
+- [x] 7.4 Feature tests: script tags stripped from plan, empty-markup field stored as null (stays "not filled"/partial), integers still enforced

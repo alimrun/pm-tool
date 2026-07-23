@@ -22,15 +22,15 @@ class TasksheetEntryRequest extends FormRequest
             'team_id' => ['required', 'integer', 'exists:teams,id'],
             'user_id' => ['required', 'integer', 'exists:users,id'],
             'date' => ['required', 'date'],
-            'plan' => ['nullable', 'string', 'max:5000'],
-            'result' => ['nullable', 'string', 'max:5000'],
-            'comment' => ['nullable', 'string', 'max:5000'],
-            'tickets' => ['nullable', 'string', 'max:5000'],
+            'plan' => ['nullable', 'string', 'max:20000'],
+            'result' => ['nullable', 'string', 'max:20000'],
+            'comment' => ['nullable', 'string', 'max:20000'],
+            'tickets' => ['nullable', 'string', 'max:20000'],
             'work_points' => ['nullable', 'integer', 'min:0'],
             'ticket_count' => ['nullable', 'integer', 'min:0'],
             'ticket_points' => ['nullable', 'integer', 'min:0'],
             'leave_type' => ['nullable', Rule::in(array_keys(TasksheetEntry::LEAVE_TYPES))],
-            'feedback' => ['nullable', 'string', 'max:5000'],
+            'feedback' => ['nullable', 'string', 'max:20000'],
         ];
     }
 

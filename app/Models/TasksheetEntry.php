@@ -3,8 +3,11 @@
 namespace App\Models;
 
 use App\Models\Concerns\RecordsActivity;
+use App\Support\HtmlSanitizer;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\HtmlString;
 
 /**
  * One member's row on a team's daily tasksheet: morning plan, day-end result,
@@ -47,6 +50,48 @@ class TasksheetEntry extends Model
             'ticket_count' => 'integer',
             'ticket_points' => 'integer',
         ];
+    }
+
+    /**
+     * Rich-text columns (Trix) store sanitized HTML; visually-empty markup is
+     * stored as null so it never counts as a filled field.
+     */
+    private function richText(): Attribute
+    {
+        return Attribute::make(
+            set: fn ($value) => HtmlSanitizer::isEmpty($value) ? null : HtmlSanitizer::clean($value),
+        );
+    }
+
+    protected function plan(): Attribute
+    {
+        return $this->richText();
+    }
+
+    protected function result(): Attribute
+    {
+        return $this->richText();
+    }
+
+    protected function comment(): Attribute
+    {
+        return $this->richText();
+    }
+
+    protected function tickets(): Attribute
+    {
+        return $this->richText();
+    }
+
+    protected function feedback(): Attribute
+    {
+        return $this->richText();
+    }
+
+    /** Sanitized HTML of a rich-text field, ready to render unescaped. */
+    public function html(string $field): HtmlString
+    {
+        return new HtmlString($this->{$field} ?? '');
     }
 
     public function member(): BelongsTo

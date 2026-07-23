@@ -15,7 +15,8 @@ The one sensitive requirement: the team lead's **Feedback** per row must be invi
 **Non-Goals:**
 - No month overview / multi-day matrix in v1 (single day per view, like the sheet's tabs).
 - No aggregation reports (weekly/monthly point totals) — future change.
-- No rich text in cells (spreadsheet cells are plain text; textareas suffice).
+<!-- (revised) rich text in cells was originally excluded; superseded by decision 6d -->
+
 - No off-day awareness — any date can hold entries.
 - No notifications or reminders to fill the sheet.
 
@@ -32,6 +33,8 @@ The one sensitive requirement: the team lead's **Feedback** per row must be invi
 5. **Routes**: `GET tasksheet` (index with `?team=` and `?date=` params, defaults: the user's first team, today) and `PUT tasksheet/entries` (upsert keyed by team+user+date from validated input; `updateOrCreate` on the unique triple). Registered in the collaboration section — the page is viewable by any authenticated user (consistent with the app's open-read philosophy); editing is what's restricted. Named `tasksheet.index` / `tasksheet.entries.upsert`.
 
 6. **Grid UI, one Alpine inline form per row** — table layout mirroring the sheet's column order; each row shows saved values as text with an Edit action when permitted (own row, or lead). Edit expands the row into a form (textareas for plan/result/comment/tickets, number inputs for points/counts, feedback textarea for leads only) that PUTs the whole row. Mirrors the daily-notes inline-edit pattern rather than cell-level AJAX — one save per row keeps it simple and transactional.
+
+6d. **Text cells are rich text; counters are integers** — `plan`, `result`, `comment`, `tickets`, and `feedback` use the Trix + `HtmlSanitizer` pipeline (Attribute setters; visually-empty markup stored as `null` so partial-fill counting stays honest; rendered via an `html()` helper with `prose-notes` styling). `work_points`, `ticket_count`, `ticket_points` remain plain non-negative integers (number inputs, `integer|min:0`, int casts). Supersedes the original "plain textareas" non-goal per product decision.
 
 6c. **Activity logging via `RecordsActivity`, with feedback excluded** — `TasksheetEntry` uses the existing trait (created/updated/deleted entries with causer and field diffs). `feedback` goes into `activityExtraIgnored()`: the activity feed is visible to every authenticated user, so neither feedback snapshots nor feedback old→new diffs may ever be logged. A side effect: a lead updating *only* feedback records no activity at all (the trait skips updates whose diff is empty after ignores) — acceptable, since logging even "feedback changed" would reveal that feedback exists for a row. Description reads "Created/Updated tasksheet row “{member} · {date}”".
 

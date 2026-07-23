@@ -318,6 +318,30 @@ class TeamTasksheetTest extends TestCase
         $this->assertSame($countAfterCreate, Activity::where('subject_type', TasksheetEntry::class)->count());
     }
 
+    public function test_rich_text_is_sanitized_and_empty_markup_stays_unfilled(): void
+    {
+        $team = $this->team();
+        $dev = $this->member($team);
+
+        $this->actingAs($dev)->put(route('tasksheet.entries.upsert'), $this->payload($team, $dev, [
+            'plan' => '<strong>Ship it</strong><script>alert(1)</script>',
+            'result' => '<div><br></div>', // visually empty → must not count as filled
+        ]))->assertRedirect();
+
+        $entry = TasksheetEntry::first();
+        $this->assertStringContainsString('<strong>Ship it</strong>', $entry->plan);
+        $this->assertStringNotContainsString('<script>', $entry->plan);
+        $this->assertNull($entry->result);
+        $this->assertTrue($entry->isPartiallyFilled());
+
+        // Grid renders the sanitized markup (layout has its own <script> tags,
+        // so assert on the payload, not the tag).
+        $this->actingAs($dev)->get(route('tasksheet.index', ['team' => $team->id]))
+            ->assertOk()
+            ->assertSee('<strong>Ship it</strong>', false)
+            ->assertDontSee('alert(1)', false);
+    }
+
     public function test_tasksheet_requires_auth(): void
     {
         $this->get(route('tasksheet.index'))->assertRedirect(route('login'));

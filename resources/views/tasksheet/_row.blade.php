@@ -22,11 +22,11 @@
                 <span class="inline-flex rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">{{ $entry->leaveLabel() }}</span>
             </td>
         @elseif ($entry)
-            <td class="max-w-xs whitespace-pre-line px-3 py-3 text-slate-700">{{ $entry->plan ?? '—' }}</td>
-            <td class="max-w-xs whitespace-pre-line px-3 py-3 text-slate-700">{{ $entry->result ?? '—' }}</td>
-            <td class="max-w-xs whitespace-pre-line px-3 py-3 text-slate-600">{{ $entry->comment ?? '—' }}</td>
+            <td class="max-w-xs px-3 py-3 text-slate-700">@if ($entry->plan)<div class="prose-notes text-sm">{!! $entry->html('plan') !!}</div>@else — @endif</td>
+            <td class="max-w-xs px-3 py-3 text-slate-700">@if ($entry->result)<div class="prose-notes text-sm">{!! $entry->html('result') !!}</div>@else — @endif</td>
+            <td class="max-w-xs px-3 py-3 text-slate-600">@if ($entry->comment)<div class="prose-notes text-sm">{!! $entry->html('comment') !!}</div>@else — @endif</td>
             <td class="px-3 py-3 text-center text-slate-700">{{ $entry->work_points ?? '—' }}</td>
-            <td class="max-w-[10rem] whitespace-pre-line px-3 py-3 text-slate-600">{{ $entry->tickets ?? '—' }}</td>
+            <td class="max-w-[10rem] px-3 py-3 text-slate-600">@if ($entry->tickets)<div class="prose-notes text-sm">{!! $entry->html('tickets') !!}</div>@else — @endif</td>
             <td class="px-3 py-3 text-center text-slate-700">{{ $entry->ticket_count ?? '—' }}</td>
             <td class="px-3 py-3 text-center text-slate-700">{{ $entry->ticket_points ?? '—' }}</td>
         @elseif ($isPast)
@@ -38,7 +38,7 @@
         @endif
 
         @if ($isLeadViewer)
-            <td class="max-w-xs whitespace-pre-line px-3 py-3 text-slate-600">{{ $entry?->feedback ?? '—' }}</td>
+            <td class="max-w-xs px-3 py-3 text-slate-600">@if ($entry?->feedback)<div class="prose-notes text-sm">{!! $entry->html('feedback') !!}</div>@else — @endif</td>
         @endif
 
         <td class="px-3 py-3 text-right">
@@ -69,22 +69,26 @@
                         <span class="text-xs text-slate-400">Choosing a leave clears the day's task fields.</span>
                     </div>
 
-                    <div class="grid gap-3 lg:grid-cols-4 sm:grid-cols-2">
+                    <div class="grid gap-3 sm:grid-cols-2">
                         <div>
                             <label class="field-label">Task plan at morning</label>
-                            <textarea name="plan" rows="3" class="field-input">{{ $entry?->plan }}</textarea>
+                            <input id="ts-{{ $rowUser->id }}-plan" type="hidden" name="plan" value="{{ $entry?->plan }}">
+                            <trix-editor input="ts-{{ $rowUser->id }}-plan" class="prose-notes"></trix-editor>
                         </div>
                         <div>
                             <label class="field-label">Day end result</label>
-                            <textarea name="result" rows="3" class="field-input">{{ $entry?->result }}</textarea>
+                            <input id="ts-{{ $rowUser->id }}-result" type="hidden" name="result" value="{{ $entry?->result }}">
+                            <trix-editor input="ts-{{ $rowUser->id }}-result" class="prose-notes"></trix-editor>
                         </div>
                         <div>
                             <label class="field-label">Comment</label>
-                            <textarea name="comment" rows="3" class="field-input">{{ $entry?->comment }}</textarea>
+                            <input id="ts-{{ $rowUser->id }}-comment" type="hidden" name="comment" value="{{ $entry?->comment }}">
+                            <trix-editor input="ts-{{ $rowUser->id }}-comment" class="prose-notes"></trix-editor>
                         </div>
                         <div>
                             <label class="field-label">Tickets</label>
-                            <textarea name="tickets" rows="3" class="field-input">{{ $entry?->tickets }}</textarea>
+                            <input id="ts-{{ $rowUser->id }}-tickets" type="hidden" name="tickets" value="{{ $entry?->tickets }}">
+                            <trix-editor input="ts-{{ $rowUser->id }}-tickets" class="prose-notes"></trix-editor>
                         </div>
                     </div>
 
@@ -106,7 +110,8 @@
                     @if ($isLeadViewer)
                         <div>
                             <label class="field-label">Feedback <span class="font-normal text-slate-400">(visible to leads only)</span></label>
-                            <textarea name="feedback" rows="2" class="field-input">{{ $entry?->feedback }}</textarea>
+                            <input id="ts-{{ $rowUser->id }}-feedback" type="hidden" name="feedback" value="{{ $entry?->feedback }}">
+                            <trix-editor input="ts-{{ $rowUser->id }}-feedback" class="prose-notes"></trix-editor>
                         </div>
                     @endif
 
