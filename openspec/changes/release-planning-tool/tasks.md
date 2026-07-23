@@ -69,3 +69,8 @@
 - [x] 10.1 Seeder: admin + viewer users, several colored projects/teams, releases with phases including at least one deliberate same-team overlap
 - [x] 10.2 Manual pass: login as admin (CRUD + upload + overlap warning) and as viewer (read-only); confirm dashboard timeline, filters, and overlap highlight
 - [x] 10.3 Run `openspec validate` and the test suite; write a short README with setup + demo login credentials
+
+## 11. Revision: default timeline to the current quarter
+
+- [x] 11.1 Dashboard defaults to the current quarter on a fresh visit; explicit "All quarters" still shows the whole year
+- [x] 11.2 Feature test covering the default and the all-quarters override

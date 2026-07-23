@@ -25,7 +25,12 @@ class DashboardController extends Controller
         }
 
         $year = (int) $request->integer('year', (int) now()->year);
-        $quarter = $request->filled('quarter') ? (int) $request->integer('quarter') : null;
+
+        // Fresh visit (no quarter param) → current quarter. An explicit empty
+        // quarter (the "All quarters" option) still means the whole year.
+        $quarter = $request->has('quarter')
+            ? ($request->filled('quarter') ? (int) $request->integer('quarter') : null)
+            : (int) now()->quarter;
         $projectId = $request->filled('project_id') ? (int) $request->integer('project_id') : null;
         $teamId = $request->filled('team_id') ? (int) $request->integer('team_id') : null;
         $groupBy = $request->input('group_by') === 'project' ? 'project' : 'team';

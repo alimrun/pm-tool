@@ -177,4 +177,64 @@ class CollaborationTest extends TestCase
         $this->assertSame('R', $changes['name']['old']);
         $this->assertSame('Renamed Release', $changes['name']['new']);
     }
+
+    public function test_assignee_options_are_team_members_only(): void
+    {
+        $release = $this->release();
+        $member = User::factory()->create(['name' => 'Inteam Ivy', 'role' => User::ROLE_DEVELOPER]);
+        User::factory()->create(['name' => 'Outsider Oz', 'role' => User::ROLE_DEVELOPER]);
+        $release->team->members()->attach($member);
+
+        $task = Task::create(['release_id' => $release->id, 'title' => 'T1', 'status' => 'todo']);
+
+        $this->actingAs($this->admin())->get(route('tasks.show', $task))
+            ->assertOk()
+            ->assertSee('Inteam Ivy')
+            ->assertDontSee('Outsider Oz');
+
+        $this->actingAs($this->admin())->get(route('releases.show', $release))
+            ->assertOk()
+            ->assertSee('Inteam Ivy')
+            ->assertDontSee('Outsider Oz');
+    }
+
+    public function test_assignee_outside_team_is_rejected_but_member_accepted(): void
+    {
+        $release = $this->release();
+        $member = User::factory()->create(['role' => User::ROLE_DEVELOPER]);
+        $outsider = User::factory()->create(['role' => User::ROLE_DEVELOPER]);
+        $release->team->members()->attach($member);
+
+        $task = Task::create(['release_id' => $release->id, 'title' => 'T1', 'status' => 'todo']);
+
+        $this->actingAs($this->admin())->put(route('tasks.update', $task), [
+            'title' => 'T1', 'assignee_id' => $outsider->id,
+        ])->assertSessionHasErrors('assignee_id');
+        $this->assertNull($task->refresh()->assignee_id);
+
+        $this->actingAs($this->admin())->put(route('tasks.update', $task), [
+            'title' => 'T1', 'assignee_id' => $member->id,
+        ])->assertRedirect();
+        $this->assertSame($member->id, $task->refresh()->assignee_id);
+    }
+
+    public function test_former_member_assignee_is_kept_and_still_listed(): void
+    {
+        $release = $this->release();
+        $member = User::factory()->create(['name' => 'Departed Dana', 'role' => User::ROLE_DEVELOPER]);
+        $release->team->members()->attach($member);
+
+        $task = Task::create(['release_id' => $release->id, 'title' => 'T1', 'status' => 'todo', 'assignee_id' => $member->id]);
+
+        $release->team->members()->detach($member);
+
+        // Still listed (as current assignee) and keeping them assigned is allowed.
+        $this->actingAs($this->admin())->get(route('tasks.show', $task))
+            ->assertOk()->assertSee('Departed Dana');
+
+        $this->actingAs($this->admin())->put(route('tasks.update', $task), [
+            'title' => 'T1 renamed', 'assignee_id' => $member->id,
+        ])->assertRedirect();
+        $this->assertSame($member->id, $task->refresh()->assignee_id);
+    }
 }

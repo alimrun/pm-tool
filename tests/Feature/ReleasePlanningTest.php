@@ -175,6 +175,21 @@ class ReleasePlanningTest extends TestCase
             ->assertOk();
     }
 
+    public function test_dashboard_defaults_to_current_quarter_but_all_quarters_is_selectable(): void
+    {
+        $q = (int) now()->quarter;
+
+        // Fresh visit → current quarter preselected.
+        $this->actingAs($this->viewer())->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('value="'.$q.'" selected', false);
+
+        // Explicit "All quarters" (empty param) → no quarter selected.
+        $this->actingAs($this->viewer())->get(route('dashboard', ['quarter' => '']))
+            ->assertOk()
+            ->assertDontSee('value="'.$q.'" selected', false);
+    }
+
     public function test_guest_is_redirected_to_login(): void
     {
         $this->get(route('dashboard'))->assertRedirect(route('login'));

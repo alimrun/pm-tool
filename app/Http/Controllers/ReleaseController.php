@@ -123,11 +123,20 @@ class ReleaseController extends Controller
             ->limit(40)
             ->get();
 
+        // Assignees are team-wise: the owning team's active members, plus any
+        // current assignees who have since left the team.
+        $users = $release->team->members()->active()->orderBy('name')->get()
+            ->concat($release->rootTasks->map->assignee->filter())
+            ->concat($release->rootTasks->flatMap(fn ($t) => $t->subtasks->map->assignee)->filter())
+            ->unique('id')
+            ->sortBy('name')
+            ->values();
+
         return view('releases.show', [
             'release' => $release,
             'conflicts' => $conflicts,
             'history' => $history,
-            'users' => User::orderBy('name')->get(),
+            'users' => $users,
         ]);
     }
 

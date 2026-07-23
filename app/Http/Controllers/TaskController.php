@@ -44,9 +44,17 @@ class TaskController extends Controller
         $task->load(['release.project', 'release.team', 'assignee', 'creator',
             'subtasks.assignee', 'comments.user', 'parent']);
 
+        // Assignees are team-wise: the release team's active members, plus any
+        // current assignee who has since left the team (so nothing displays blank).
+        $users = $task->release->team->members()->active()->orderBy('name')->get();
+        $current = collect([$task->assignee])
+            ->merge($task->subtasks->map->assignee)
+            ->filter();
+        $users = $users->concat($current)->unique('id')->sortBy('name')->values();
+
         return view('tasks.show', [
             'task' => $task,
-            'users' => User::orderBy('name')->get(),
+            'users' => $users,
         ]);
     }
 

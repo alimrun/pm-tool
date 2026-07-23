@@ -43,3 +43,9 @@
 - [x] 5.1 Seeder: demo tasks/subtasks, comments, and off-days (activity logging opted out during seed)
 - [x] 5.2 Feature tests: task + subtask create/one-level guard; comment create + author/admin delete + forbidden path; off-day within-window + weekend helper; activity recorded with causer + old→new
 - [x] 5.3 Migrate, `npm run build`, run full test suite (49 pass), live smoke test (admin + viewer), then check off tasks and `openspec validate`
+
+## 6. Revision: team-wise assignee options
+
+- [x] 6.1 Task page and release tasks-panel assignee selects list only the release team's active members (plus current assignees no longer on the team)
+- [x] 6.2 `TaskRequest` rejects assignees outside the release's team (unchanged existing assignee allowed)
+- [x] 6.3 Feature tests: options limited to team, non-member rejected, former-member assignee preserved

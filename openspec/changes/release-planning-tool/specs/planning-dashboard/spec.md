@@ -30,12 +30,16 @@ The system SHALL visually flag on the dashboard any two releases owned by the sa
 - **THEN** the system shows them without any conflict indicator
 
 ### Requirement: Filter the timeline
-The system SHALL allow filtering the dashboard by year, quarter, project, and team, and SHALL default to the current year. Filters SHALL be combinable.
+The system SHALL allow filtering the dashboard by year, quarter, project, and team, and SHALL default to the current year and the current quarter. An explicit "all quarters" choice SHALL show the whole year. Filters SHALL be combinable.
 
 #### Scenario: Filter by quarter and team
 - **WHEN** a user selects a specific year, quarter, and team
 - **THEN** the system shows only releases matching all selected filters
 
-#### Scenario: Default view is the current year
+#### Scenario: Default view is the current quarter
 - **WHEN** a user opens the dashboard without choosing filters
-- **THEN** the system shows releases for the current year
+- **THEN** the system shows releases for the current quarter of the current year
+
+#### Scenario: All quarters on request
+- **WHEN** a user explicitly selects "All quarters"
+- **THEN** the system shows the whole current year
