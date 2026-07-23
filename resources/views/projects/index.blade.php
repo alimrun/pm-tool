@@ -3,8 +3,8 @@
         <div class="flex items-center justify-between">
             <h2 class="page-title">Projects</h2>
             @if (auth()->user()->isAdmin())
-                <a href="{{ route('projects.create') }}"
-                   class="btn-primary btn-sm">
+                <a href="{{ route('projects.create') }}" class="btn-primary btn-sm">
+                    <x-icon name="plus" class="h-4 w-4" />
                     New project
                 </a>
             @endif
@@ -15,7 +15,10 @@
         <div class="app-container">
             <div class="card overflow-hidden">
                 @if ($projects->isEmpty())
-                    <div class="p-10 text-center text-slate-500">No projects yet.</div>
+                    <div class="p-12 text-center">
+                        <x-icon name="folder" class="mx-auto h-10 w-10 text-slate-300" />
+                        <p class="mt-3 text-sm text-slate-500">No projects yet.</p>
+                    </div>
                 @else
                     <table class="table-base">
                         <thead class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -49,24 +52,24 @@
                                         @endif
                                     </td>
                                     <td class="px-6 py-4">
-                                        <div class="flex items-center justify-end gap-2">
-                                            <a href="{{ route('projects.show', $project) }}" class="text-slate-500 hover:text-indigo-600">View</a>
+                                        <div class="flex items-center justify-end gap-1">
+                                            <x-action-btn icon="eye" tone="brand" :href="route('projects.show', $project)" title="View" aria-label="View {{ $project->name }}" />
                                             @if (auth()->user()->isAdmin())
-                                                <a href="{{ route('projects.edit', $project) }}" class="text-slate-500 hover:text-indigo-600">Edit</a>
+                                                <x-action-btn icon="pencil" tone="brand" :href="route('projects.edit', $project)" title="Edit" aria-label="Edit {{ $project->name }}" />
                                                 @if ($project->isArchived())
                                                     <form method="POST" action="{{ route('projects.restore', $project) }}">@csrf
-                                                        <button class="text-slate-500 hover:text-emerald-600">Restore</button>
+                                                        <x-action-btn icon="restore" tone="emerald" title="Restore" aria-label="Restore {{ $project->name }}" />
                                                     </form>
                                                 @else
                                                     <form method="POST" action="{{ route('projects.archive', $project) }}">@csrf
-                                                        <button class="text-slate-500 hover:text-amber-600">Archive</button>
+                                                        <x-action-btn icon="archive" tone="amber" title="Archive" aria-label="Archive {{ $project->name }}" />
                                                     </form>
                                                 @endif
                                                 @if ($project->releases_count === 0)
                                                     <form method="POST" action="{{ route('projects.destroy', $project) }}"
                                                           data-confirm="Delete this project permanently?" data-confirm-verb="Delete">
                                                         @csrf @method('DELETE')
-                                                        <button class="text-slate-500 hover:text-rose-600">Delete</button>
+                                                        <x-action-btn icon="trash" tone="rose" title="Delete" aria-label="Delete {{ $project->name }}" />
                                                     </form>
                                                 @endif
                                             @endif

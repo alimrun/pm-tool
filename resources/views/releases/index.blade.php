@@ -4,7 +4,7 @@
             <h2 class="page-title">Releases</h2>
             @if (auth()->user()->canManageReleases())
                 <a href="{{ route('releases.create') }}" class="btn-primary btn-sm">
-                    <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M10 5a1 1 0 011 1v3h3a1 1 0 110 2h-3v3a1 1 0 11-2 0v-3H6a1 1 0 110-2h3V6a1 1 0 011-1z"/></svg>
+                    <x-icon name="plus" class="h-4 w-4" />
                     New release
                 </a>
             @endif

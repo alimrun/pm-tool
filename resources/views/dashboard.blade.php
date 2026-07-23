@@ -66,6 +66,170 @@
                 </div>
             </form>
 
+            {{-- ============================ OVERVIEW ============================ --}}
+            @php
+                $statusFill = [
+                    'todo' => '#94a3b8',        // slate-400
+                    'in_progress' => '#3b82f6', // blue-500
+                    'in_review' => '#f59e0b',   // amber-500
+                    'done' => '#10b981',        // emerald-500
+                ];
+            @endphp
+
+            {{-- KPI tiles --}}
+            <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                {{-- Active releases --}}
+                <div class="card card-pad">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-medium text-slate-500">Active releases</span>
+                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-brand-50 text-brand-600">
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path d="M15.5 2A1.5 1.5 0 0014 3.5v13a1.5 1.5 0 001.5 1.5h1a1.5 1.5 0 001.5-1.5v-13A1.5 1.5 0 0016.5 2h-1zM9.5 6A1.5 1.5 0 008 7.5v9A1.5 1.5 0 009.5 18h1a1.5 1.5 0 001.5-1.5v-9A1.5 1.5 0 0010.5 6h-1zM3.5 10A1.5 1.5 0 002 11.5v5A1.5 1.5 0 003.5 18h1A1.5 1.5 0 006 16.5v-5A1.5 1.5 0 004.5 10h-1z"/></svg>
+                        </span>
+                    </div>
+                    <p class="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{{ $analytics['active'] }}</p>
+                    <p class="mt-1 text-xs text-slate-400">ongoing in {{ $analytics['year'] }}</p>
+                </div>
+
+                {{-- Completed --}}
+                <div class="card card-pad">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-medium text-slate-500">Completed</span>
+                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 5.153a.75.75 0 01.143 1.052l-7 9.5a.75.75 0 01-1.127.075l-3.5-3.5a.75.75 0 011.06-1.06l2.894 2.893 6.48-8.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+                        </span>
+                    </div>
+                    <p class="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{{ $analytics['completedThisYear'] }}</p>
+                    <p class="mt-1 text-xs text-slate-400">shipped in {{ $analytics['year'] }}</p>
+                </div>
+
+                {{-- Upcoming --}}
+                <div class="card card-pad">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-medium text-slate-500">Starting soon</span>
+                        <span class="flex h-8 w-8 items-center justify-center rounded-lg bg-sky-50 text-sky-600">
+                            <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.75 2a.75.75 0 01.75.75V4h6V2.75a.75.75 0 011.5 0V4h.25A2.75 2.75 0 0117 6.75v8.5A2.75 2.75 0 0114.25 18H5.75A2.75 2.75 0 013 15.25v-8.5A2.75 2.75 0 015.75 4H6V2.75A.75.75 0 015.75 2zm-1.5 6.5v6.75c0 .69.56 1.25 1.25 1.25h8.5c.69 0 1.25-.56 1.25-1.25V8.5h-11z" clip-rule="evenodd"/></svg>
+                        </span>
+                    </div>
+                    <p class="mt-2 text-3xl font-semibold tracking-tight text-slate-900">{{ $analytics['upcoming'] }}</p>
+                    <p class="mt-1 text-xs text-slate-400">start in next 30 days</p>
+                </div>
+
+                {{-- Conflicts --}}
+                <div class="card card-pad">
+                    <div class="flex items-center justify-between">
+                        <span class="text-xs font-medium text-slate-500">Scheduling conflicts</span>
+                        @php $hasConflict = $analytics['conflictCount'] > 0; @endphp
+                        <span class="flex h-8 w-8 items-center justify-center rounded-lg {{ $hasConflict ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600' }}">
+                            @if ($hasConflict)
+                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.515 2.625H3.72c-1.344 0-2.187-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd"/></svg>
+                            @else
+                                <svg class="h-4 w-4" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M16.704 5.153a.75.75 0 01.143 1.052l-7 9.5a.75.75 0 01-1.127.075l-3.5-3.5a.75.75 0 011.06-1.06l2.894 2.893 6.48-8.817a.75.75 0 011.05-.143z" clip-rule="evenodd"/></svg>
+                            @endif
+                        </span>
+                    </div>
+                    <p class="mt-2 text-3xl font-semibold tracking-tight {{ $hasConflict ? 'text-amber-600' : 'text-slate-900' }}">{{ $analytics['conflictCount'] }}</p>
+                    <p class="mt-1 text-xs text-slate-400">
+                        {{ $hasConflict ? $analytics['teamsDoubleBooked'].' '.\Illuminate\Support\Str::plural('team', $analytics['teamsDoubleBooked']).' double-booked' : 'All teams clear' }}
+                    </p>
+                </div>
+            </div>
+
+            {{-- Delivery progress --}}
+            <div class="card card-pad">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h3 class="text-sm font-semibold text-slate-900">Delivery progress</h3>
+                        <p class="mt-0.5 text-xs text-slate-400">Task status across ongoing releases</p>
+                    </div>
+                    <div class="text-right">
+                        <span class="text-2xl font-semibold tracking-tight text-slate-900 tabular">{{ $analytics['donePct'] }}%</span>
+                        <span class="ml-1 text-xs text-slate-400">done · {{ $analytics['taskTotal'] }} {{ \Illuminate\Support\Str::plural('task', $analytics['taskTotal']) }}</span>
+                    </div>
+                </div>
+
+                @if ($analytics['taskTotal'] > 0)
+                    <div class="mt-4 flex h-2.5 w-full gap-[2px]">
+                        @foreach ($analytics['statusCounts'] as $status => $count)
+                            @if ($count > 0)
+                                <div class="rounded-[3px] first:rounded-l-full last:rounded-r-full"
+                                     style="width: {{ $count / $analytics['taskTotal'] * 100 }}%; background-color: {{ $statusFill[$status] }}"
+                                     title="{{ $analytics['statusLabels'][$status] }}: {{ $count }}"></div>
+                            @endif
+                        @endforeach
+                    </div>
+                    <div class="mt-3 flex flex-wrap gap-x-5 gap-y-1.5">
+                        @foreach ($analytics['statusCounts'] as $status => $count)
+                            <span class="inline-flex items-center gap-1.5 text-xs">
+                                <span class="h-2.5 w-2.5 rounded-full" style="background-color: {{ $statusFill[$status] }}"></span>
+                                <span class="text-slate-600">{{ $analytics['statusLabels'][$status] }}</span>
+                                <span class="font-semibold text-slate-900 tabular">{{ $count }}</span>
+                            </span>
+                        @endforeach
+                    </div>
+                @else
+                    <p class="mt-4 text-sm text-slate-400">No tasks on the ongoing releases in this view yet.</p>
+                @endif
+            </div>
+
+            {{-- Charts: release load + team workload --}}
+            <div class="grid gap-4 lg:grid-cols-2">
+
+                {{-- Release load by month --}}
+                <div class="card card-pad">
+                    <h3 class="text-sm font-semibold text-slate-900">Release load</h3>
+                    <p class="mt-0.5 text-xs text-slate-400">Releases in flight each month · {{ $analytics['year'] }}</p>
+
+                    @php $mMax = $analytics['monthlyMax']; @endphp
+                    <div class="mt-5">
+                        <div class="flex h-40 items-end gap-1.5">
+                            @foreach ($analytics['monthly'] as $m)
+                                <div class="flex h-full flex-1 flex-col items-center justify-end gap-1"
+                                     title="{{ $m['label'] }}: {{ $m['count'] }} {{ \Illuminate\Support\Str::plural('release', $m['count']) }}">
+                                    @if ($m['count'] > 0)
+                                        <span class="text-[10px] font-medium text-slate-400 tabular">{{ $m['count'] }}</span>
+                                    @endif
+                                    <div class="w-full max-w-[1.6rem] rounded-t-[4px] transition-colors {{ $m['current'] ? 'bg-brand-600 ring-2 ring-brand-200' : 'bg-brand-400 hover:bg-brand-500' }}"
+                                         style="height: {{ $mMax > 0 ? max((int) round($m['count'] / $mMax * 80), $m['count'] > 0 ? 8 : 0) : 0 }}%"></div>
+                                </div>
+                            @endforeach
+                        </div>
+                        <div class="mt-2 flex gap-1.5">
+                            @foreach ($analytics['monthly'] as $m)
+                                <div class="flex-1 text-center text-[10px] {{ $m['current'] ? 'font-semibold text-brand-600' : 'text-slate-400' }}">{{ $m['label'] }}</div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+
+                {{-- Team workload --}}
+                <div class="card card-pad">
+                    <h3 class="text-sm font-semibold text-slate-900">Team workload</h3>
+                    <p class="mt-0.5 text-xs text-slate-400">Active releases per team</p>
+
+                    @if (empty($analytics['teamWorkload']))
+                        <p class="mt-6 text-sm text-slate-400">No active releases in this view.</p>
+                    @else
+                        @php $twMax = $analytics['teamWorkloadMax']; @endphp
+                        <ul class="mt-5 space-y-3">
+                            @foreach (array_slice($analytics['teamWorkload'], 0, 6) as $t)
+                                <li class="flex items-center gap-3">
+                                    <span class="h-2.5 w-2.5 flex-none rounded-full" style="background-color: {{ $t['color'] }}"></span>
+                                    <span class="w-24 flex-none truncate text-sm text-slate-700" title="{{ $t['name'] }}">{{ $t['name'] }}</span>
+                                    <div class="relative h-2.5 flex-1 overflow-hidden rounded-full bg-slate-100">
+                                        <div class="absolute inset-y-0 left-0 rounded-full bg-brand-500"
+                                             style="width: {{ $twMax > 0 ? max((int) round($t['count'] / $twMax * 100), 6) : 0 }}%"></div>
+                                    </div>
+                                    <span class="w-5 flex-none text-right text-sm font-semibold text-slate-900 tabular">{{ $t['count'] }}</span>
+                                </li>
+                            @endforeach
+                        </ul>
+                        @if (count($analytics['teamWorkload']) > 6)
+                            <p class="mt-3 text-xs text-slate-400">+{{ count($analytics['teamWorkload']) - 6 }} more {{ \Illuminate\Support\Str::plural('team', count($analytics['teamWorkload']) - 6) }}</p>
+                        @endif
+                    @endif
+                </div>
+            </div>
+
             {{-- Legend --}}
             <div class="flex flex-wrap items-center gap-4 text-xs text-slate-600">
                 <span class="font-medium text-slate-500">Phases:</span>

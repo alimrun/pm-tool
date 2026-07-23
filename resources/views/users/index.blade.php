@@ -2,8 +2,8 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h2 class="page-title">Users</h2>
-            <a href="{{ route('users.create') }}"
-               class="btn-primary btn-sm">
+            <a href="{{ route('users.create') }}" class="btn-primary btn-sm">
+                <x-icon name="plus" class="h-4 w-4" />
                 New user
             </a>
         </div>
@@ -18,8 +18,13 @@
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                     <div class="lg:col-span-2">
                         <label class="eyebrow" for="q">Search</label>
-                        <input type="search" name="q" id="q" value="{{ $filters['search'] }}"
-                               placeholder="Name or email" class="field-input">
+                        <div class="relative mt-1">
+                            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                                <x-icon name="search" class="h-4 w-4" />
+                            </span>
+                            <input type="search" name="q" id="q" value="{{ $filters['search'] }}"
+                                   placeholder="Name or email" class="field-input !mt-0 !pl-9">
+                        </div>
                     </div>
                     <div>
                         <label class="eyebrow" for="role">Role</label>
@@ -52,8 +57,11 @@
 
             <div class="card overflow-hidden">
                 @if ($users->isEmpty())
-                    <div class="p-12 text-center text-sm text-slate-500">
-                        {{ $hasFilters ? 'No users match these filters.' : 'No users yet.' }}
+                    <div class="p-12 text-center">
+                        <x-icon name="users" class="mx-auto h-10 w-10 text-slate-300" />
+                        <p class="mt-3 text-sm text-slate-500">
+                            {{ $hasFilters ? 'No users match these filters.' : 'No users yet.' }}
+                        </p>
                     </div>
                 @else
                 <table class="table-base">
@@ -85,18 +93,20 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="flex items-center justify-end gap-3">
-                                        <a href="{{ route('users.edit', $user) }}" class="text-slate-500 hover:text-indigo-600">Edit</a>
+                                    <div class="flex items-center justify-end gap-1">
+                                        <x-action-btn icon="pencil" tone="brand" :href="route('users.edit', $user)" title="Edit" aria-label="Edit {{ $user->name }}" />
                                         <form method="POST" action="{{ route('users.toggle', $user) }}">
                                             @csrf
-                                            <button class="text-slate-500 hover:{{ $user->isActive() ? 'text-amber-600' : 'text-emerald-600' }}">
-                                                {{ $user->isActive() ? 'Deactivate' : 'Reactivate' }}
-                                            </button>
+                                            @if ($user->isActive())
+                                                <x-action-btn icon="pause" tone="amber" title="Deactivate" aria-label="Deactivate {{ $user->name }}" />
+                                            @else
+                                                <x-action-btn icon="restore" tone="emerald" title="Reactivate" aria-label="Reactivate {{ $user->name }}" />
+                                            @endif
                                         </form>
                                         <form method="POST" action="{{ route('users.destroy', $user) }}"
                                               data-confirm="Delete this user permanently?" data-confirm-verb="Delete">
                                             @csrf @method('DELETE')
-                                            <button class="text-slate-500 hover:text-rose-600">Delete</button>
+                                            <x-action-btn icon="trash" tone="rose" title="Delete" aria-label="Delete {{ $user->name }}" />
                                         </form>
                                     </div>
                                 </td>

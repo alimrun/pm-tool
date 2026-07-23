@@ -29,7 +29,10 @@
                 </form>
             </div>
 
-            <a href="{{ route('meeting-notes.create', $filter && $filter !== 'general' ? ['release' => $filter] : []) }}" class="btn-primary btn-sm">New meeting note</a>
+            <a href="{{ route('meeting-notes.create', $filter && $filter !== 'general' ? ['release' => $filter] : []) }}" class="btn-primary btn-sm">
+                <x-icon name="plus" class="h-4 w-4" />
+                New meeting note
+            </a>
         </div>
     </x-slot>
 
@@ -55,7 +58,13 @@
                             <p class="mt-1 text-xs text-slate-400">
                                 {{ $note->meeting_date->format('D, M j, Y') }} · {{ $note->author->name ?? 'Unknown' }}
                             </p>
-                            <p class="mt-3 text-sm text-slate-600">{{ Str::limit(trim(strip_tags($note->body)), 160) }}</p>
+                            @unless (\App\Support\HtmlSanitizer::isEmpty($note->body))
+                                <div class="prose-notes relative mt-3 max-h-28 overflow-hidden text-sm text-slate-600 [&>*:first-child]:mt-0">
+                                    {!! $note->bodyPreviewHtml() !!}
+                                    {{-- fade the clipped bottom edge --}}
+                                    <span class="pointer-events-none absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-white to-transparent"></span>
+                                </div>
+                            @endunless
                         </a>
                     @endforeach
                 </div>

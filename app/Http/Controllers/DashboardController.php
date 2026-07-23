@@ -56,6 +56,7 @@ class DashboardController extends Controller
             'months' => Timeline::monthColumns($rangeStart, $rangeEnd),
             'rangeStart' => $rangeStart,
             'rangeEnd' => $rangeEnd,
+            'analytics' => $this->analytics($year, $projectId, $teamId, $conflicts, $releases),
             'phaseColors' => Release::PHASE_COLORS,
             'phaseLabels' => Release::PHASES,
             'hasConflicts' => in_array(true, $conflicts, true),
@@ -70,6 +71,105 @@ class DashboardController extends Controller
             'projects' => Project::orderBy('name')->get(),
             'teams' => Team::orderBy('name')->get(),
         ]);
+    }
+
+    /**
+     * Headline metrics + chart series for the planning dashboard. Scoped to the
+     * selected year and the project/team filters so the numbers agree with the
+     * timeline below them. The conflict figure reflects the current timeline view.
+     *
+     * @param  array<int, bool>  $conflicts
+     * @param  \Illuminate\Support\Collection<int, Release>  $timelineReleases
+     * @return array<string, mixed>
+     */
+    private function analytics(int $year, ?int $projectId, ?int $teamId, array $conflicts, $timelineReleases): array
+    {
+        $yStart = Carbon::create($year, 1, 1)->startOfDay();
+        $yEnd = Carbon::create($year, 12, 31)->endOfDay();
+
+        // Every release whose window touches the selected year (+ filters). Kept in
+        // memory so the monthly-load and team-workload series need no extra queries.
+        $yearReleases = Release::query()
+            ->with('team:id,name,color')
+            ->whereDate('start_date', '<=', $yEnd->toDateString())
+            ->whereDate('end_date', '>=', $yStart->toDateString())
+            ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
+            ->when($teamId, fn ($q) => $q->where('team_id', $teamId))
+            ->get();
+
+        $ongoing = $yearReleases->whereNull('completed_at');
+
+        // Release load: how many releases are in flight during each calendar month.
+        $monthly = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $ms = Carbon::create($year, $m, 1)->startOfDay();
+            $me = $ms->copy()->endOfMonth();
+            $monthly[] = [
+                'label' => $ms->format('M'),
+                'count' => $yearReleases->filter(
+                    fn (Release $r) => $r->start_date <= $me && $r->end_date >= $ms
+                )->count(),
+                'current' => $m === (int) now()->month && $year === (int) now()->year,
+            ];
+        }
+        $monthlyMax = max(array_column($monthly, 'count'));
+
+        // Delivery: task-status mix across the ongoing releases in view.
+        $statusOrder = array_keys(Task::STATUSES);
+        $raw = Task::query()
+            ->whereIn('release_id', $ongoing->pluck('id'))
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+        $statusCounts = [];
+        foreach ($statusOrder as $status) {
+            $statusCounts[$status] = (int) ($raw[$status] ?? 0);
+        }
+        $taskTotal = array_sum($statusCounts);
+
+        // Team workload: active releases owned by each team, busiest first.
+        $teamWorkload = $ongoing
+            ->groupBy('team_id')
+            ->map(fn ($rs) => [
+                'name' => $rs->first()->team->name,
+                'color' => $rs->first()->team->color,
+                'count' => $rs->count(),
+            ])
+            ->sortByDesc('count')
+            ->values()
+            ->all();
+
+        // Conflicts as flagged on the timeline (release count + distinct teams).
+        $conflictedIds = array_keys(array_filter($conflicts));
+        $teamsDoubleBooked = $timelineReleases
+            ->whereIn('id', $conflictedIds)
+            ->pluck('team_id')->unique()->count();
+
+        return [
+            'year' => $year,
+            'active' => $ongoing->count(),
+            'completedThisYear' => Release::completed()
+                ->whereYear('completed_at', $year)
+                ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
+                ->when($teamId, fn ($q) => $q->where('team_id', $teamId))
+                ->count(),
+            'upcoming' => Release::ongoing()
+                ->whereDate('start_date', '>=', now()->toDateString())
+                ->whereDate('start_date', '<=', now()->addDays(30)->toDateString())
+                ->when($projectId, fn ($q) => $q->where('project_id', $projectId))
+                ->when($teamId, fn ($q) => $q->where('team_id', $teamId))
+                ->count(),
+            'conflictCount' => count($conflictedIds),
+            'teamsDoubleBooked' => $teamsDoubleBooked,
+            'monthly' => $monthly,
+            'monthlyMax' => $monthlyMax,
+            'statusCounts' => $statusCounts,
+            'statusLabels' => Task::STATUSES,
+            'taskTotal' => $taskTotal,
+            'donePct' => $taskTotal > 0 ? (int) round($statusCounts['done'] / $taskTotal * 100) : 0,
+            'teamWorkload' => $teamWorkload,
+            'teamWorkloadMax' => collect($teamWorkload)->max('count') ?: 0,
+        ];
     }
 
     private function memberDashboard(Request $request): View
