@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Models\Concerns\RecordsActivity;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -12,7 +13,7 @@ class Team extends Model
 {
     use RecordsActivity;
 
-    protected $fillable = ['name', 'description', 'color', 'archived_at'];
+    protected $fillable = ['name', 'description', 'color', 'team_lead_id', 'archived_at'];
 
     protected function casts(): array
     {
@@ -30,6 +31,12 @@ class Team extends Model
     public function members(): BelongsToMany
     {
         return $this->belongsToMany(User::class)->withTimestamps();
+    }
+
+    /** The user leading this team — any user, regardless of role. */
+    public function teamLead(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'team_lead_id');
     }
 
     public function isArchived(): bool

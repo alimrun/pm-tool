@@ -25,7 +25,10 @@ class TeamController extends Controller
 
     public function create(): View
     {
-        return view('teams.create', ['team' => new Team(['color' => '#0891b2'])]);
+        return view('teams.create', [
+            'team' => new Team(['color' => '#0891b2']),
+            'users' => $this->leadCandidates(),
+        ]);
     }
 
     public function store(TeamRequest $request): RedirectResponse
@@ -38,7 +41,7 @@ class TeamController extends Controller
 
     public function show(Team $team, OverlapChecker $overlap): View
     {
-        $team->load(['releases.project', 'releases.team', 'members']);
+        $team->load(['releases.project', 'releases.team', 'members', 'teamLead']);
         $releases = $team->releases->sortBy('start_date')->values();
         $conflicts = $overlap->flagConflicts($releases);
 
@@ -48,12 +51,18 @@ class TeamController extends Controller
             ->orderBy('name')
             ->get();
 
-        return view('teams.show', compact('team', 'releases', 'conflicts', 'assignableUsers'));
+        // Any active user may be picked as lead — role is irrelevant.
+        $leadCandidates = $this->leadCandidates();
+
+        return view('teams.show', compact('team', 'releases', 'conflicts', 'assignableUsers', 'leadCandidates'));
     }
 
     public function edit(Team $team): View
     {
-        return view('teams.edit', compact('team'));
+        return view('teams.edit', [
+            'team' => $team,
+            'users' => $this->leadCandidates(),
+        ]);
     }
 
     public function update(TeamRequest $request, Team $team): RedirectResponse
@@ -108,5 +117,27 @@ class TeamController extends Controller
         $team->members()->detach($user->id);
 
         return back()->with('success', "{$user->name} removed from {$team->name}.");
+    }
+
+    /** Assign (or clear) the team lead directly from the team page — any user, any role. */
+    public function updateLead(Request $request, Team $team): RedirectResponse
+    {
+        $data = $request->validate([
+            'team_lead_id' => ['nullable', Rule::exists('users', 'id')->whereNull('deactivated_at')],
+        ]);
+
+        $team->update(['team_lead_id' => $data['team_lead_id'] ?? null]);
+
+        $message = $team->team_lead_id
+            ? "{$team->teamLead()->first()->name} set as lead of {$team->name}."
+            : "Team lead cleared for {$team->name}.";
+
+        return back()->with('success', $message);
+    }
+
+    /** All active users, eligible to lead a team regardless of their role. */
+    private function leadCandidates()
+    {
+        return User::active()->orderBy('name')->get();
     }
 }

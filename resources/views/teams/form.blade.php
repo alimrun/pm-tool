@@ -26,5 +26,19 @@
             </div>
             @error('color') <p class="field-error">{{ $message }}</p> @enderror
         </div>
+
+        <div>
+            <label for="team_lead_id" class="field-label">Team lead <span class="text-slate-400">(optional)</span></label>
+            <select id="team_lead_id" name="team_lead_id" class="field-input">
+                <option value="">— No lead assigned —</option>
+                @foreach ($users as $user)
+                    <option value="{{ $user->id }}" @selected((int) old('team_lead_id', $team->team_lead_id) === $user->id)>
+                        {{ $user->name }}
+                    </option>
+                @endforeach
+            </select>
+            <p class="mt-1 text-xs text-slate-500">Any user can lead a team — their role doesn’t matter.</p>
+            @error('team_lead_id') <p class="field-error">{{ $message }}</p> @enderror
+        </div>
     </div>
 </div>

@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
         Route::delete('teams/{team}', [TeamController::class, 'destroy'])->name('teams.destroy');
         Route::post('teams/{team}/archive', [TeamController::class, 'archive'])->name('teams.archive');
         Route::post('teams/{team}/restore', [TeamController::class, 'restore'])->name('teams.restore');
+        Route::put('teams/{team}/lead', [TeamController::class, 'updateLead'])->name('teams.lead.update');
     });
 
     /*
