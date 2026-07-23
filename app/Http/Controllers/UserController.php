@@ -5,17 +5,33 @@ namespace App\Http\Controllers;
 use App\Http\Requests\UserRequest;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class UserController extends Controller
 {
-    public function index(): View
+    public function index(Request $request): View
     {
-        $users = User::orderByRaw('deactivated_at is not null') // active first
+        $search = trim((string) $request->input('q', ''));
+        $role = $request->input('role');
+        $status = $request->input('status'); // active | inactive | (all)
+
+        $users = User::query()
+            ->when($search !== '', fn ($q) => $q->where(fn ($q) => $q
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('email', 'like', "%{$search}%")))
+            ->when($role && array_key_exists($role, User::ROLES), fn ($q) => $q->where('role', $role))
+            ->when($status === 'active', fn ($q) => $q->whereNull('deactivated_at'))
+            ->when($status === 'inactive', fn ($q) => $q->whereNotNull('deactivated_at'))
+            ->orderByRaw('deactivated_at is not null') // active first
             ->orderBy('name')
             ->get();
 
-        return view('users.index', compact('users'));
+        return view('users.index', [
+            'users' => $users,
+            'roles' => User::ROLES,
+            'filters' => compact('search', 'role', 'status'),
+        ]);
     }
 
     public function create(): View

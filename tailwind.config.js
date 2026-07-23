@@ -31,6 +31,10 @@ export default {
             boxShadow: {
                 card: '0 1px 2px 0 rgb(15 23 42 / 0.04), 0 1px 3px 0 rgb(15 23 42 / 0.06)',
                 pop: '0 10px 30px -12px rgb(15 23 42 / 0.25)',
+                // Button depth: hairline lift at rest, indigo-tinted glow on hover.
+                btn: '0 1px 2px 0 rgb(15 23 42 / 0.05)',
+                'btn-primary': '0 1px 2px 0 rgb(15 23 42 / 0.12), 0 2px 5px -1px rgb(79 70 229 / 0.28)',
+                'btn-primary-hover': '0 6px 18px -4px rgb(79 70 229 / 0.5), 0 2px 6px -2px rgb(79 70 229 / 0.35)',
             },
             keyframes: {
                 'fade-in-up': {

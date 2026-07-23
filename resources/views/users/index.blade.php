@@ -2,16 +2,68 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h2 class="page-title">Users</h2>
-            <a href="{{ route('users.create') }}"
-               class="btn-primary btn-sm">
+            <a href="{{ route('users.create') }}" class="btn-primary btn-sm">
+                <x-icon name="plus" class="h-4 w-4" />
                 New user
             </a>
         </div>
     </x-slot>
 
     <div class="py-8">
-        <div class="app-container">
+        <div class="app-container space-y-6">
+            @php $hasFilters = $filters['search'] !== '' || $filters['role'] || $filters['status']; @endphp
+
+            {{-- Filters --}}
+            <form method="GET" action="{{ route('users.index') }}" class="card p-4">
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div class="lg:col-span-2">
+                        <label class="eyebrow" for="q">Search</label>
+                        <div class="relative mt-1">
+                            <span class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400">
+                                <x-icon name="search" class="h-4 w-4" />
+                            </span>
+                            <input type="search" name="q" id="q" value="{{ $filters['search'] }}"
+                                   placeholder="Name or email" class="field-input !mt-0 !pl-9">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="eyebrow" for="role">Role</label>
+                        <select name="role" id="role" class="field-select">
+                            <option value="">All roles</option>
+                            @foreach ($roles as $value => $label)
+                                <option value="{{ $value }}" @selected($filters['role'] === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="eyebrow" for="status">Status</label>
+                        <select name="status" id="status" class="field-select">
+                            <option value="">All</option>
+                            <option value="active" @selected($filters['status'] === 'active')>Active</option>
+                            <option value="inactive" @selected($filters['status'] === 'inactive')>Deactivated</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
+                        <button class="btn-primary btn-sm">Apply</button>
+                        @if ($hasFilters)
+                            <a href="{{ route('users.index') }}" class="btn-secondary btn-sm">Reset</a>
+                        @endif
+                        <span class="ml-auto self-center text-xs text-slate-400">
+                            {{ $users->count() }} {{ Str::plural('user', $users->count()) }}
+                        </span>
+                    </div>
+                </div>
+            </form>
+
             <div class="card overflow-hidden">
+                @if ($users->isEmpty())
+                    <div class="p-12 text-center">
+                        <x-icon name="users" class="mx-auto h-10 w-10 text-slate-300" />
+                        <p class="mt-3 text-sm text-slate-500">
+                            {{ $hasFilters ? 'No users match these filters.' : 'No users yet.' }}
+                        </p>
+                    </div>
+                @else
                 <table class="table-base">
                     <thead class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                         <tr>
@@ -41,18 +93,20 @@
                                     @endif
                                 </td>
                                 <td class="px-6 py-4">
-                                    <div class="flex items-center justify-end gap-3">
-                                        <a href="{{ route('users.edit', $user) }}" class="text-slate-500 hover:text-indigo-600">Edit</a>
+                                    <div class="flex items-center justify-end gap-1">
+                                        <x-action-btn icon="pencil" tone="brand" :href="route('users.edit', $user)" title="Edit" aria-label="Edit {{ $user->name }}" />
                                         <form method="POST" action="{{ route('users.toggle', $user) }}">
                                             @csrf
-                                            <button class="text-slate-500 hover:{{ $user->isActive() ? 'text-amber-600' : 'text-emerald-600' }}">
-                                                {{ $user->isActive() ? 'Deactivate' : 'Reactivate' }}
-                                            </button>
+                                            @if ($user->isActive())
+                                                <x-action-btn icon="pause" tone="amber" title="Deactivate" aria-label="Deactivate {{ $user->name }}" />
+                                            @else
+                                                <x-action-btn icon="restore" tone="emerald" title="Reactivate" aria-label="Reactivate {{ $user->name }}" />
+                                            @endif
                                         </form>
                                         <form method="POST" action="{{ route('users.destroy', $user) }}"
                                               data-confirm="Delete this user permanently?" data-confirm-verb="Delete">
                                             @csrf @method('DELETE')
-                                            <button class="text-slate-500 hover:text-rose-600">Delete</button>
+                                            <x-action-btn icon="trash" tone="rose" title="Delete" aria-label="Delete {{ $user->name }}" />
                                         </form>
                                     </div>
                                 </td>
@@ -60,6 +114,7 @@
                         @endforeach
                     </tbody>
                 </table>
+                @endif
             </div>
         </div>
     </div>

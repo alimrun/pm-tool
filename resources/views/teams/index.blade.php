@@ -3,8 +3,8 @@
         <div class="flex items-center justify-between">
             <h2 class="page-title">Teams</h2>
             @if (auth()->user()->isAdmin())
-                <a href="{{ route('teams.create') }}"
-                   class="btn-primary btn-sm">
+                <a href="{{ route('teams.create') }}" class="btn-primary btn-sm">
+                    <x-icon name="plus" class="h-4 w-4" />
                     New team
                 </a>
             @endif
@@ -15,7 +15,10 @@
         <div class="app-container">
             <div class="card overflow-hidden">
                 @if ($teams->isEmpty())
-                    <div class="p-10 text-center text-slate-500">No teams yet.</div>
+                    <div class="p-12 text-center">
+                        <x-icon name="team" class="mx-auto h-10 w-10 text-slate-300" />
+                        <p class="mt-3 text-sm text-slate-500">No teams yet.</p>
+                    </div>
                 @else
                     <table class="table-base">
                         <thead class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
@@ -49,24 +52,24 @@
                                         @endif
                                     </td>
                                     <td class="px-6 py-4">
-                                        <div class="flex items-center justify-end gap-2">
-                                            <a href="{{ route('teams.show', $team) }}" class="text-slate-500 hover:text-indigo-600">View</a>
+                                        <div class="flex items-center justify-end gap-1">
+                                            <x-action-btn icon="eye" tone="brand" :href="route('teams.show', $team)" title="View" aria-label="View {{ $team->name }}" />
                                             @if (auth()->user()->isAdmin())
-                                                <a href="{{ route('teams.edit', $team) }}" class="text-slate-500 hover:text-indigo-600">Edit</a>
+                                                <x-action-btn icon="pencil" tone="brand" :href="route('teams.edit', $team)" title="Edit" aria-label="Edit {{ $team->name }}" />
                                                 @if ($team->isArchived())
                                                     <form method="POST" action="{{ route('teams.restore', $team) }}">@csrf
-                                                        <button class="text-slate-500 hover:text-emerald-600">Restore</button>
+                                                        <x-action-btn icon="restore" tone="emerald" title="Restore" aria-label="Restore {{ $team->name }}" />
                                                     </form>
                                                 @else
                                                     <form method="POST" action="{{ route('teams.archive', $team) }}">@csrf
-                                                        <button class="text-slate-500 hover:text-amber-600">Archive</button>
+                                                        <x-action-btn icon="archive" tone="amber" title="Archive" aria-label="Archive {{ $team->name }}" />
                                                     </form>
                                                 @endif
                                                 @if ($team->releases_count === 0)
                                                     <form method="POST" action="{{ route('teams.destroy', $team) }}"
                                                           data-confirm="Delete this team permanently?" data-confirm-verb="Delete">
                                                         @csrf @method('DELETE')
-                                                        <button class="text-slate-500 hover:text-rose-600">Delete</button>
+                                                        <x-action-btn icon="trash" tone="rose" title="Delete" aria-label="Delete {{ $team->name }}" />
                                                     </form>
                                                 @endif
                                             @endif

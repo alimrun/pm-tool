@@ -40,6 +40,18 @@ class MeetingNote extends Model
         return new HtmlString($this->body ?? '');
     }
 
+    /**
+     * Body HTML for list/card previews. Keeps the rich formatting (bold, lists,
+     * headings…) but strips anchor tags — the preview lives inside the card's own
+     * <a>, and nesting anchors is invalid HTML. Link text is preserved.
+     */
+    public function bodyPreviewHtml(): HtmlString
+    {
+        $html = preg_replace('/<a\b[^>]*>|<\/a>/i', '', $this->body ?? '');
+
+        return new HtmlString($html ?? '');
+    }
+
     public function author(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
