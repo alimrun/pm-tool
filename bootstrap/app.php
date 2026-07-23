@@ -1,5 +1,11 @@
 <?php
 
+use App\Http\Middleware\EnsureFullAccess;
+use App\Http\Middleware\EnsureUserCanManageReleases;
+use App\Http\Middleware\EnsureUserCanManageUsers;
+use App\Http\Middleware\EnsureUserIsActive;
+use App\Http\Middleware\EnsureUserIsAdmin;
+use App\Http\Middleware\EnsureUserIsLead;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,15 +19,16 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
-            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
-            'manage-users' => \App\Http\Middleware\EnsureUserCanManageUsers::class,
-            'manage-releases' => \App\Http\Middleware\EnsureUserCanManageReleases::class,
-            'full-access' => \App\Http\Middleware\EnsureFullAccess::class,
+            'admin' => EnsureUserIsAdmin::class,
+            'lead' => EnsureUserIsLead::class,
+            'manage-users' => EnsureUserCanManageUsers::class,
+            'manage-releases' => EnsureUserCanManageReleases::class,
+            'full-access' => EnsureFullAccess::class,
         ]);
 
         // Sign out any user deactivated mid-session on their next request.
         $middleware->web(append: [
-            \App\Http\Middleware\EnsureUserIsActive::class,
+            EnsureUserIsActive::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

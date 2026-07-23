@@ -8,11 +8,11 @@ use App\Models\User;
 class CommentPolicy
 {
     /**
-     * A comment may be edited or deleted only by its author or an admin.
+     * A comment may be edited or deleted only by its author or a lead.
      */
     public function update(User $user, Comment $comment): bool
     {
-        return $comment->user_id === $user->id || $user->isAdmin();
+        return $comment->user_id === $user->id || $user->isLead();
     }
 
     public function delete(User $user, Comment $comment): bool

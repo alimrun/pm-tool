@@ -13,6 +13,38 @@
         <div class="app-container space-y-6">
             @php $hasFilters = $filters['search'] !== '' || $filters['role'] || $filters['status']; @endphp
 
+            {{-- Overview (whole directory, independent of filters) --}}
+            @if ($stats['total'] > 0)
+                @php
+                    $roleColors = [
+                        'admin' => '#6366f1',      // indigo-500
+                        'cto' => '#a855f7',        // purple-500
+                        'tech_lead' => '#10b981',  // emerald-500
+                        'team_lead' => '#06b6d4',  // cyan-500
+                        'developer' => '#3b82f6',  // blue-500
+                        'qa' => '#f59e0b',         // amber-500
+                        'viewer' => '#94a3b8',     // slate-400
+                    ];
+                    $roleRows = collect($roleDistribution)
+                        ->map(fn ($r) => ['label' => $r['label'], 'value' => $r['count'], 'color' => $roleColors[$r['role']] ?? '#94a3b8'])
+                        ->all();
+                @endphp
+
+                <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
+                    @include('partials.stat-tile', ['label' => 'Users', 'value' => $stats['total'], 'sub' => 'total accounts', 'icon' => 'users', 'tone' => 'brand'])
+                    @include('partials.stat-tile', ['label' => 'Active', 'value' => $stats['active'], 'sub' => 'can sign in', 'icon' => 'user', 'tone' => 'emerald'])
+                    @include('partials.stat-tile', ['label' => 'Deactivated', 'value' => $stats['inactive'], 'sub' => 'access revoked', 'icon' => 'pause', 'tone' => 'slate'])
+                    @include('partials.stat-tile', ['label' => 'Engineers', 'value' => $stats['engineers'], 'sub' => 'developers + QA', 'icon' => 'team', 'tone' => 'sky'])
+                </div>
+
+                @include('partials.hbar-chart', [
+                    'title' => 'Users by role',
+                    'subtitle' => 'Across the whole directory',
+                    'rows' => $roleRows,
+                    'emptyText' => 'No users yet.',
+                ])
+            @endif
+
             {{-- Filters --}}
             <form method="GET" action="{{ route('users.index') }}" class="card p-4">
                 <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

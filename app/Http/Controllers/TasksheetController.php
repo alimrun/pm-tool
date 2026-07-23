@@ -65,6 +65,29 @@ class TasksheetController extends Controller
             $viewerIsMember = $team->members()->whereKey($viewer->id)->exists();
         }
 
+        // Team output for the trailing 14 days (ending on the viewed day): total
+        // work points booked per calendar day, for the productivity chart.
+        $trend = [];
+        if ($team) {
+            $windowStart = $day->copy()->subDays(13);
+            $byDay = TasksheetEntry::where('team_id', $team->id)
+                ->whereBetween('date', [$windowStart->toDateString(), $day->toDateString()])
+                ->selectRaw('date, COALESCE(SUM(work_points), 0) as wp')
+                ->groupBy('date')
+                ->get()
+                ->mapWithKeys(fn ($r) => [Carbon::parse($r->date)->toDateString() => (int) $r->wp]);
+
+            for ($i = 13; $i >= 0; $i--) {
+                $d = $day->copy()->subDays($i);
+                $trend[] = [
+                    'label' => $d->format('j'),
+                    'dow' => $d->format('D'),
+                    'wp' => $byDay[$d->toDateString()] ?? 0,
+                    'current' => $d->isSameDay($day),
+                ];
+            }
+        }
+
         return view('tasksheet.index', [
             'teams' => $teams,
             'team' => $team,
@@ -76,6 +99,7 @@ class TasksheetController extends Controller
             'rowUsers' => $rowUsers,
             'entries' => $entries,
             'viewerIsMember' => $viewerIsMember,
+            'trend' => $trend,
         ]);
     }
 

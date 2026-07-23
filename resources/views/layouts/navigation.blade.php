@@ -54,20 +54,24 @@
                 </a>
             @endif
 
-            <div class="hidden sm:block">@include('partials.role-badge', ['role' => $user->role])</div>
-
-            <x-dropdown align="right" width="48">
+            <x-dropdown align="right" width="w-56">
                 <x-slot name="trigger">
-                    <button class="flex items-center gap-2 rounded-lg px-1.5 py-1 text-sm text-slate-600 transition hover:bg-slate-100">
-                        <span class="flex h-8 w-8 items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">{{ strtoupper($initials) }}</span>
-                        <span class="hidden font-medium text-slate-700 md:inline">{{ $user->name }}</span>
-                        <x-icon name="chevron-down" class="h-4 w-4 text-slate-400" />
+                    <button class="flex items-center gap-2.5 rounded-lg py-1 pl-1.5 pr-1 text-sm text-slate-600 transition hover:bg-slate-100">
+                        <span class="flex h-8 w-8 flex-none items-center justify-center rounded-full bg-brand-100 text-xs font-semibold text-brand-700">{{ strtoupper($initials) }}</span>
+                        <span class="hidden text-left leading-tight sm:block">
+                            <span class="block max-w-[11rem] truncate text-sm font-semibold text-slate-800">{{ $user->name }}</span>
+                            <span class="block">@include('partials.role-badge', ['role' => $user->role, 'variant' => 'text'])</span>
+                        </span>
+                        <x-icon name="chevron-down" class="h-4 w-4 flex-none text-slate-400" />
                     </button>
                 </x-slot>
                 <x-slot name="content">
                     <div class="border-b border-slate-100 px-4 py-3">
-                        <p class="text-sm font-medium text-slate-900">{{ $user->name }}</p>
-                        <p class="truncate text-xs text-slate-500">{{ $user->email }}</p>
+                        <div class="flex items-center justify-between gap-2">
+                            <p class="truncate text-sm font-semibold text-slate-900">{{ $user->name }}</p>
+                            @include('partials.role-badge', ['role' => $user->role])
+                        </div>
+                        <p class="mt-0.5 truncate text-xs text-slate-500">{{ $user->email }}</p>
                     </div>
                     <x-dropdown-link :href="route('profile.edit')" class="flex items-center gap-2.5">
                         <x-icon name="user" class="h-4 w-4 text-slate-400" />{{ __('Profile') }}

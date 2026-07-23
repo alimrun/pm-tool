@@ -7,7 +7,7 @@ use App\Models\User;
 
 /**
  * Meeting notes are shared team records, so — unlike NotePolicy, where not
- * even admins may touch someone else's personal note — admins may delete any
+ * even leads may touch someone else's personal note — a lead may delete any
  * meeting note (e.g. cleanup after someone leaves). Editing stays author-only.
  */
 class MeetingNotePolicy
@@ -34,6 +34,6 @@ class MeetingNotePolicy
 
     public function delete(User $user, MeetingNote $meetingNote): bool
     {
-        return $meetingNote->created_by === $user->id || $user->isAdmin();
+        return $meetingNote->created_by === $user->id || $user->isLead();
     }
 }

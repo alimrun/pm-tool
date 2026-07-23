@@ -23,10 +23,17 @@ class User extends Authenticatable
     use HasFactory, Notifiable, RecordsActivity, SoftDeletes;
 
     public const ROLE_ADMIN = 'admin';
+
     public const ROLE_CTO = 'cto';
+
+    public const ROLE_TECH_LEAD = 'tech_lead';
+
     public const ROLE_TEAM_LEAD = 'team_lead';
+
     public const ROLE_DEVELOPER = 'developer';
+
     public const ROLE_QA = 'qa';
+
     public const ROLE_VIEWER = 'viewer';
 
     /**
@@ -37,10 +44,26 @@ class User extends Authenticatable
     public const ROLES = [
         self::ROLE_ADMIN => 'Admin',
         self::ROLE_CTO => 'CTO',
+        self::ROLE_TECH_LEAD => 'Tech Lead',
         self::ROLE_TEAM_LEAD => 'Team Lead',
         self::ROLE_DEVELOPER => 'Developer',
         self::ROLE_QA => 'QA',
         self::ROLE_VIEWER => 'Viewer',
+    ];
+
+    /**
+     * The leadership tier. These four roles share one identical set of
+     * permissions — anything one of them can do, all of them can. Every
+     * capability check below funnels through this list so the tiers never
+     * drift apart.
+     *
+     * @var list<string>
+     */
+    public const LEAD_ROLES = [
+        self::ROLE_ADMIN,
+        self::ROLE_CTO,
+        self::ROLE_TECH_LEAD,
+        self::ROLE_TEAM_LEAD,
     ];
 
     protected function casts(): array
@@ -62,33 +85,48 @@ class User extends Authenticatable
         return $this->role === self::ROLE_TEAM_LEAD;
     }
 
+    public function isTechLead(): bool
+    {
+        return $this->role === self::ROLE_TECH_LEAD;
+    }
+
     public function isViewer(): bool
     {
         return $this->role === self::ROLE_VIEWER;
     }
 
-    /** Admins and CTOs may manage user accounts. */
-    public function canManageUsers(): bool
-    {
-        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_CTO], true);
-    }
-
-    /** Admins and team leads may plan releases (create/edit, off-days, documents). */
-    public function canManageReleases(): bool
-    {
-        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_TEAM_LEAD], true);
-    }
-
-    /** Admins and team leads may add/remove people on a team. */
-    public function canManageTeamMembers(): bool
-    {
-        return $this->canManageReleases();
-    }
-
-    /** Leads (admin, CTO, team lead) may correct any tasksheet row and see lead-only feedback. */
+    /**
+     * Whether this user belongs to the leadership tier (admin, CTO, tech lead,
+     * team lead). All four share the same access, so every capability check is
+     * an alias of this method.
+     */
     public function isLead(): bool
     {
-        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_CTO, self::ROLE_TEAM_LEAD], true);
+        return in_array($this->role, self::LEAD_ROLES, true);
+    }
+
+    /** Leads may manage user accounts. */
+    public function canManageUsers(): bool
+    {
+        return $this->isLead();
+    }
+
+    /** Leads may plan releases (create/edit, off-days, documents). */
+    public function canManageReleases(): bool
+    {
+        return $this->isLead();
+    }
+
+    /** Leads may add/remove people on a team. */
+    public function canManageTeamMembers(): bool
+    {
+        return $this->isLead();
+    }
+
+    /** Leads may manage projects and teams (create/edit, archive, assign leads). */
+    public function canManageWorkspace(): bool
+    {
+        return $this->isLead();
     }
 
     /**
@@ -164,7 +202,7 @@ class User extends Authenticatable
         return $this->hasMany(Event::class, 'created_by');
     }
 
-    public function attendedEvents(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    public function attendedEvents(): BelongsToMany
     {
         return $this->belongsToMany(Event::class);
     }

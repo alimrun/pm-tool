@@ -9,7 +9,7 @@ class TeamRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->isAdmin() ?? false;
+        return $this->user()?->canManageWorkspace() ?? false;
     }
 
     public function rules(): array
@@ -25,6 +25,8 @@ class TeamRequest extends FormRequest
             ],
             'description' => ['nullable', 'string', 'max:2000'],
             'color' => ['required', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            // Any active user may lead — role is irrelevant.
+            'team_lead_id' => ['nullable', Rule::exists('users', 'id')->whereNull('deactivated_at')],
         ];
     }
 
