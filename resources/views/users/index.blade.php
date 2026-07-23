@@ -10,8 +10,52 @@
     </x-slot>
 
     <div class="py-8">
-        <div class="app-container">
+        <div class="app-container space-y-6">
+            @php $hasFilters = $filters['search'] !== '' || $filters['role'] || $filters['status']; @endphp
+
+            {{-- Filters --}}
+            <form method="GET" action="{{ route('users.index') }}" class="card p-4">
+                <div class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                    <div class="lg:col-span-2">
+                        <label class="eyebrow" for="q">Search</label>
+                        <input type="search" name="q" id="q" value="{{ $filters['search'] }}"
+                               placeholder="Name or email" class="field-input">
+                    </div>
+                    <div>
+                        <label class="eyebrow" for="role">Role</label>
+                        <select name="role" id="role" class="field-select">
+                            <option value="">All roles</option>
+                            @foreach ($roles as $value => $label)
+                                <option value="{{ $value }}" @selected($filters['role'] === $value)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div>
+                        <label class="eyebrow" for="status">Status</label>
+                        <select name="status" id="status" class="field-select">
+                            <option value="">All</option>
+                            <option value="active" @selected($filters['status'] === 'active')>Active</option>
+                            <option value="inactive" @selected($filters['status'] === 'inactive')>Deactivated</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end gap-2 sm:col-span-2 lg:col-span-4">
+                        <button class="btn-primary btn-sm">Apply</button>
+                        @if ($hasFilters)
+                            <a href="{{ route('users.index') }}" class="btn-secondary btn-sm">Reset</a>
+                        @endif
+                        <span class="ml-auto self-center text-xs text-slate-400">
+                            {{ $users->count() }} {{ Str::plural('user', $users->count()) }}
+                        </span>
+                    </div>
+                </div>
+            </form>
+
             <div class="card overflow-hidden">
+                @if ($users->isEmpty())
+                    <div class="p-12 text-center text-sm text-slate-500">
+                        {{ $hasFilters ? 'No users match these filters.' : 'No users yet.' }}
+                    </div>
+                @else
                 <table class="table-base">
                     <thead class="bg-slate-50 text-left text-xs font-medium uppercase tracking-wide text-slate-500">
                         <tr>
@@ -60,6 +104,7 @@
                         @endforeach
                     </tbody>
                 </table>
+                @endif
             </div>
         </div>
     </div>

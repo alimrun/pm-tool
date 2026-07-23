@@ -14,16 +14,32 @@
         <!-- Scripts -->
         @vite(['resources/css/app.css', 'resources/js/app.js'])
     </head>
+    @php
+        // Opt-in "app shell": on lg+, the whole page fits the viewport and the
+        // main region scrolls internally instead of the window. Pages request it
+        // with <x-app-layout full-height>. Mobile always uses normal page scroll.
+        $fullHeight = filter_var($attributes->get('full-height', false), FILTER_VALIDATE_BOOLEAN);
+    @endphp
     <body class="min-h-full font-sans">
-        <div class="flex min-h-screen flex-col">
-            {{-- Sticky top bar --}}
-            <div class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-md">
+        <div @class([
+            'flex min-h-screen flex-col',
+            'lg:h-screen lg:overflow-hidden' => $fullHeight,
+        ])>
+            {{-- Sticky top bar (sticky still matters on mobile, where full-height
+                 pages fall back to normal page scroll). --}}
+            <div @class([
+                'sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur-md',
+                'lg:flex-none' => $fullHeight,
+            ])>
                 @include('layouts.navigation')
             </div>
 
             {{-- Page sub-header --}}
             @isset($header)
-                <header class="border-b border-slate-200 bg-white">
+                <header @class([
+                    'border-b border-slate-200 bg-white',
+                    'lg:flex-none' => $fullHeight,
+                ])>
                     <div class="app-container py-4 sm:py-5">
                         {{ $header }}
                     </div>
@@ -31,12 +47,15 @@
             @endisset
 
             {{-- Inline validation summary (page-scoped, persists while fixing) --}}
-            <div class="app-container">
+            <div @class(['app-container', 'lg:flex-none' => $fullHeight])>
                 @include('layouts.flash')
             </div>
 
             {{-- Page content --}}
-            <main class="flex-1">
+            <main @class([
+                'flex-1',
+                'lg:flex lg:min-h-0 lg:flex-col lg:overflow-hidden' => $fullHeight,
+            ])>
                 {{ $slot }}
             </main>
         </div>

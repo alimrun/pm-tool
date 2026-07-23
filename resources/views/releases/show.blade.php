@@ -1,4 +1,4 @@
-<x-app-layout>
+<x-app-layout full-height>
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -34,77 +34,114 @@
         </div>
     </x-slot>
 
-    <div class="py-6 sm:py-8">
-        <div class="app-container space-y-6">
+    @php
+        $total = max($release->durationInDays(), 1);
+        $today = \Illuminate\Support\Carbon::today();
+        $withinWindow = $today->between($release->start_date, $release->end_date);
+        if ($release->isComplete() || $today->gt($release->end_date)) {
+            $progress = 100;
+        } elseif ($today->lt($release->start_date)) {
+            $progress = 0;
+        } else {
+            $progress = (int) round($release->start_date->diffInDays($today) / $total * 100);
+        }
+        $todayOffset = $withinWindow ? $release->start_date->diffInDays($today) / $total * 100 : null;
+    @endphp
 
-            {{-- Full-width: conflict alert --}}
-            @if ($conflicts->isNotEmpty())
-                <div class="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
-                    <svg class="mt-0.5 h-5 w-5 flex-none text-amber-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.515 2.625H3.72c-1.344 0-2.187-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
-                    <div>
-                        <p class="font-medium">Team {{ $release->team->name }} is double-booked during this window.</p>
-                        <ul class="mt-1 list-inside list-disc">
-                            @foreach ($conflicts as $c)
-                                <li><a href="{{ route('releases.show', $c) }}" class="underline">{{ $c->name }}</a> ({{ $c->start_date->format('M j') }} – {{ $c->end_date->format('M j, Y') }})</li>
-                            @endforeach
-                        </ul>
-                    </div>
-                </div>
-            @endif
+    {{-- Desktop: fills the app-shell's main region so the two columns scroll
+         independently with no window scrollbar. Mobile: normal document flow. --}}
+    <div class="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-hidden">
+        <div class="app-container flex min-h-0 flex-1 flex-col gap-5 py-6 sm:py-8 lg:gap-4 lg:py-5">
 
-            {{-- Full-width: phase timeline --}}
-            <div class="card card-pad">
-                <div class="flex flex-wrap items-center justify-between gap-2">
-                    <h3 class="text-sm font-semibold text-slate-700">Timeline</h3>
-                    <span class="text-sm text-slate-500">
-                        {{ $release->start_date->format('M j, Y') }} – {{ $release->end_date->format('M j, Y') }}
-                        · {{ $release->durationInDays() }} days
-                        · <span class="font-medium text-slate-700">{{ $release->workingDays() }} working</span>
-                        @if ($release->offDayCount()) · {{ $release->offDayCount() }} off @endif
-                    </span>
-                </div>
+            {{-- ============ PINNED TOP BAND: alert + timeline ============ --}}
+            <div class="flex flex-none flex-col gap-4">
 
-                @php $total = max($release->durationInDays(), 1); @endphp
-                <div class="mt-4">
-                    <div class="relative h-9 w-full overflow-hidden rounded-md bg-slate-100">
-                        @foreach ($release->phases as $phase)
-                            @php
-                                $offset = $release->start_date->diffInDays($phase->start_date) / $total * 100;
-                                $width = ($phase->start_date->diffInDays($phase->end_date) + 1) / $total * 100;
-                            @endphp
-                            <div class="absolute top-0 flex h-9 items-center justify-center overflow-hidden text-[11px] font-medium text-white"
-                                 style="left: {{ $offset }}%; width: {{ $width }}%; background-color: {{ \App\Models\Release::PHASE_COLORS[$phase->phase] }}"
-                                 title="{{ $phase->label() }}: {{ $phase->start_date->format('M j') }} – {{ $phase->end_date->format('M j') }}">
-                                <span class="truncate px-1">{{ $phase->label() }}</span>
-                            </div>
-                        @endforeach
-                        @foreach ($release->offDays as $off)
-                            @php $o = $release->start_date->diffInDays($off->date) / $total * 100; @endphp
-                            <div class="absolute top-0 z-10 h-9 bg-slate-900/25"
-                                 style="left: {{ $o }}%; width: {{ 1 / $total * 100 }}%"
-                                 title="Off: {{ $off->date->format('M j, Y') }}{{ $off->reason ? ' — '.$off->reason : '' }}"></div>
-                        @endforeach
-                    </div>
-                </div>
-
-                <div class="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                    @foreach ($release->phases as $phase)
-                        <div class="rounded-lg border border-slate-100 bg-slate-50/50 p-3">
-                            <div class="flex items-center gap-2">
-                                <span class="h-2.5 w-2.5 rounded-full" style="background-color: {{ \App\Models\Release::PHASE_COLORS[$phase->phase] }}"></span>
-                                <span class="text-xs font-semibold text-slate-700">{{ $phase->label() }}</span>
-                            </div>
-                            <p class="mt-1 text-xs text-slate-500">{{ $phase->start_date->format('M j') }} – {{ $phase->end_date->format('M j, Y') }}</p>
+                @if ($conflicts->isNotEmpty())
+                    <div class="flex items-start gap-3 rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+                        <svg class="mt-0.5 h-5 w-5 flex-none text-amber-500" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.515 2.625H3.72c-1.344 0-2.187-1.458-1.515-2.625L8.485 2.495zM10 6a.75.75 0 01.75.75v3.5a.75.75 0 01-1.5 0v-3.5A.75.75 0 0110 6zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" /></svg>
+                        <div>
+                            <p class="font-medium">Team {{ $release->team->name }} is double-booked during this window.</p>
+                            <ul class="mt-1 list-inside list-disc">
+                                @foreach ($conflicts as $c)
+                                    <li><a href="{{ route('releases.show', $c) }}" class="underline">{{ $c->name }}</a> ({{ $c->start_date->format('M j') }} – {{ $c->end_date->format('M j, Y') }})</li>
+                                @endforeach
+                            </ul>
                         </div>
-                    @endforeach
-                </div>
+                    </div>
+                @endif
+
+                {{-- Compact phase timeline — stays visible while the panes below scroll --}}
+                <section class="card overflow-hidden">
+                    <div class="flex flex-wrap items-center justify-between gap-x-4 gap-y-1.5 px-5 py-3 sm:px-6">
+                        <div class="flex items-center gap-2.5">
+                            <h3 class="text-sm font-semibold text-slate-900">Timeline</h3>
+                            <span @class([
+                                'badge',
+                                'bg-emerald-50 text-emerald-700' => $progress >= 100,
+                                'bg-brand-50 text-brand-700' => $progress < 100,
+                            ])>{{ $progress }}% elapsed</span>
+                        </div>
+                        <p class="tabular text-xs text-slate-500 sm:text-sm">
+                            {{ $release->start_date->format('M j') }} – {{ $release->end_date->format('M j, Y') }}
+                            <span class="mx-1 text-slate-300">·</span>{{ $release->durationInDays() }} days
+                            <span class="mx-1 text-slate-300">·</span><span class="font-medium text-slate-700">{{ $release->workingDays() }} working</span>
+                            @if ($release->offDayCount())<span class="mx-1 text-slate-300">·</span>{{ $release->offDayCount() }} off @endif
+                        </p>
+                    </div>
+
+                    <div class="px-5 pb-4 sm:px-6">
+                        <div class="relative h-9 w-full overflow-hidden rounded-lg bg-slate-100 ring-1 ring-inset ring-slate-200/70">
+                            @foreach ($release->phases as $phase)
+                                @php
+                                    $offset = $release->start_date->diffInDays($phase->start_date) / $total * 100;
+                                    $width = ($phase->start_date->diffInDays($phase->end_date) + 1) / $total * 100;
+                                @endphp
+                                <div class="absolute top-0 flex h-9 items-center justify-center overflow-hidden text-[11px] font-medium text-white/95"
+                                     style="left: {{ $offset }}%; width: {{ $width }}%; background-color: {{ \App\Models\Release::PHASE_COLORS[$phase->phase] }}"
+                                     title="{{ $phase->label() }}: {{ $phase->start_date->format('M j') }} – {{ $phase->end_date->format('M j') }}">
+                                    <span class="truncate px-1.5">{{ $phase->label() }}</span>
+                                </div>
+                            @endforeach
+                            @foreach ($release->offDays as $off)
+                                @php $o = $release->start_date->diffInDays($off->date) / $total * 100; @endphp
+                                <div class="absolute top-0 z-10 h-9 bg-slate-900/25"
+                                     style="left: {{ $o }}%; width: {{ 1 / $total * 100 }}%"
+                                     title="Off: {{ $off->date->format('M j, Y') }}{{ $off->reason ? ' — '.$off->reason : '' }}"></div>
+                            @endforeach
+                            @if ($todayOffset !== null)
+                                <div class="absolute -top-0.5 bottom-[-0.125rem] z-20 w-px bg-slate-900" style="left: {{ $todayOffset }}%" title="Today — {{ $today->format('M j, Y') }}">
+                                    <span class="absolute -left-1 -top-1 h-2 w-2 rounded-full bg-slate-900 ring-2 ring-white"></span>
+                                </div>
+                            @endif
+                        </div>
+
+                        {{-- Phase legend chips --}}
+                        <div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs">
+                            @foreach ($release->phases as $phase)
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="h-2.5 w-2.5 rounded-full" style="background-color: {{ \App\Models\Release::PHASE_COLORS[$phase->phase] }}"></span>
+                                    <span class="font-medium text-slate-700">{{ $phase->label() }}</span>
+                                    <span class="tabular text-slate-400">{{ $phase->start_date->format('M j') }} – {{ $phase->end_date->format('M j') }}</span>
+                                </span>
+                            @endforeach
+                            @if ($release->offDayCount())
+                                <span class="inline-flex items-center gap-1.5">
+                                    <span class="h-2.5 w-2.5 rounded-sm bg-slate-900/25"></span>
+                                    <span class="text-slate-400">{{ $release->offDayCount() }} off-days</span>
+                                </span>
+                            @endif
+                        </div>
+                    </div>
+                </section>
             </div>
 
-            {{-- Main + sidebar --}}
-            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
+            {{-- ============ TWO-PANE REGION (independent scroll on lg) ============
+                 grid-rows-1 == minmax(0,1fr): pins the single row to the container
+                 height so each column scrolls internally instead of overflowing. --}}
+            <div class="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-3 lg:grid-rows-1 lg:overflow-hidden">
 
                 {{-- ============ MAIN COLUMN ============ --}}
-                <div class="space-y-6 lg:col-span-2">
+                <div class="scroll-area space-y-6 lg:col-span-2 lg:min-h-0 lg:overflow-y-auto lg:pb-6 lg:pr-2">
                     @if ($release->description)
                         <div class="card card-pad">
                             <h3 class="text-sm font-semibold text-slate-700">Description</h3>
@@ -173,7 +210,7 @@
                 </div>
 
                 {{-- ============ SIDEBAR ============ --}}
-                <div class="space-y-6 lg:col-span-1">
+                <div class="scroll-area space-y-6 lg:col-span-1 lg:min-h-0 lg:overflow-y-auto lg:pb-6 lg:pr-2">
 
                     {{-- Details --}}
                     <div class="card card-pad">
