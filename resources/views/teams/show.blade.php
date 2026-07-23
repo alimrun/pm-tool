@@ -8,7 +8,7 @@
                     <span class="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-medium text-slate-700">Archived</span>
                 @endif
             </div>
-            @if (auth()->user()->isAdmin())
+            @if (auth()->user()->canManageWorkspace())
                 <a href="{{ route('teams.edit', $team) }}" class="btn-secondary btn-sm">
                     <x-icon name="pencil" class="h-4 w-4" />
                     Edit team
@@ -21,7 +21,7 @@
         $conflictCount = collect($conflicts)->filter()->count();
         $busyThrough = $releases->max('end_date');
         $canManage = auth()->user()->canManageTeamMembers();
-        $isAdmin = auth()->user()->isAdmin();
+        $canManageTeam = auth()->user()->canManageWorkspace();
         $initials = fn ($name) => strtoupper(\Illuminate\Support\Str::of($name)->explode(' ')->map(fn ($p) => $p[0] ?? '')->take(2)->implode(''));
     @endphp
 
@@ -136,7 +136,7 @@
                                 </div>
                             @endif
 
-                            @if ($isAdmin)
+                            @if ($canManageTeam)
                                 <form method="POST" action="{{ route('teams.lead.update', $team) }}" class="mt-4 space-y-2">
                                     @csrf @method('PUT')
                                     <label for="team_lead_id" class="eyebrow">Assign lead</label>

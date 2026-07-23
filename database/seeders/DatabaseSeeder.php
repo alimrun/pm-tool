@@ -2,6 +2,8 @@
 
 namespace Database\Seeders;
 
+use App\Models\Event;
+use App\Models\Note;
 use App\Models\Project;
 use App\Models\Release;
 use App\Models\Team;
@@ -33,6 +35,8 @@ class DatabaseSeeder extends Seeder
         // Additional roles (all log in with password `password`).
         User::updateOrCreate(['email' => 'cto@example.com'],
             ['name' => 'Casey CTO', 'password' => Hash::make('password'), 'role' => User::ROLE_CTO, 'email_verified_at' => now()]);
+        User::updateOrCreate(['email' => 'techlead@example.com'],
+            ['name' => 'Tariq Tech Lead', 'password' => Hash::make('password'), 'role' => User::ROLE_TECH_LEAD, 'email_verified_at' => now()]);
         User::updateOrCreate(['email' => 'lead@example.com'],
             ['name' => 'Lee Lead', 'password' => Hash::make('password'), 'role' => User::ROLE_TEAM_LEAD, 'email_verified_at' => now()]);
         User::updateOrCreate(['email' => 'dev@example.com'],
@@ -100,7 +104,7 @@ class DatabaseSeeder extends Seeder
         }
 
         // --- Calendar events --------------------------------------------
-        $kickoff = \App\Models\Event::create([
+        $kickoff = Event::create([
             'title' => 'Checkout v2.4 kickoff', 'type' => 'meeting',
             'starts_at' => "$year-07-10 10:00:00", 'ends_at' => "$year-07-10 11:00:00",
             'location' => 'Room 4 / Zoom', 'release_id' => $r1->id, 'created_by' => $admin->id,
@@ -108,13 +112,13 @@ class DatabaseSeeder extends Seeder
         ]);
         $kickoff->attendees()->sync([$admin->id, $viewer->id]);
 
-        \App\Models\Event::create([
+        Event::create([
             'title' => 'QA review', 'type' => 'review',
             'starts_at' => "$year-07-24 14:00:00", 'ends_at' => "$year-07-24 15:00:00",
             'release_id' => $r1->id, 'created_by' => $admin->id,
         ])->attendees()->sync([$admin->id]);
 
-        \App\Models\Event::create([
+        Event::create([
             'title' => 'Checkout v2.4 release day', 'type' => 'release', 'all_day' => true,
             'starts_at' => "$year-07-29 00:00:00", 'ends_at' => "$year-07-30 23:59:59",
             'release_id' => $r1->id, 'created_by' => $admin->id,
@@ -122,11 +126,11 @@ class DatabaseSeeder extends Seeder
 
         // --- Daily notes ------------------------------------------------
         $today = now()->toDateString();
-        \App\Models\Note::create([
+        Note::create([
             'user_id' => $admin->id, 'date' => $today, 'visibility' => 'shared',
             'body' => '<div>Standup at <strong>10am</strong> — focus on the <em>Checkout v2.4</em> release.</div><ul><li>Update your board cards</li><li>Flag any blockers</li></ul>',
         ]);
-        \App\Models\Note::create([
+        Note::create([
             'user_id' => $viewer->id, 'date' => $today, 'visibility' => 'private',
             'body' => '<div>Reminder to myself: review the <strong>QA test plan</strong> before EOD.</div>',
         ]);

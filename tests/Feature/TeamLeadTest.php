@@ -70,17 +70,34 @@ class TeamLeadTest extends TestCase
         $this->assertNull($team->fresh()->team_lead_id);
     }
 
-    public function test_non_admin_cannot_assign_the_team_lead(): void
+    public function test_non_lead_cannot_assign_the_team_lead(): void
     {
-        $lead = $this->user(User::ROLE_TEAM_LEAD);
+        $actor = $this->user(User::ROLE_DEVELOPER);
         $team = Team::create(['name' => 'T', 'color' => '#0891b2']);
         $person = $this->user(User::ROLE_DEVELOPER);
 
-        $this->actingAs($lead)
+        $this->actingAs($actor)
             ->put(route('teams.lead.update', $team), ['team_lead_id' => $person->id])
             ->assertForbidden();
 
         $this->assertNull($team->fresh()->team_lead_id);
+    }
+
+    public function test_any_lead_can_assign_the_team_lead(): void
+    {
+        // The leadership tier shares one access level, so a CTO / tech lead /
+        // team lead may assign the lead just as an admin can.
+        foreach ([User::ROLE_CTO, User::ROLE_TECH_LEAD, User::ROLE_TEAM_LEAD] as $role) {
+            $actor = $this->user($role);
+            $team = Team::create(['name' => "T-$role", 'color' => '#0891b2']);
+            $person = $this->user(User::ROLE_DEVELOPER);
+
+            $this->actingAs($actor)
+                ->put(route('teams.lead.update', $team), ['team_lead_id' => $person->id])
+                ->assertRedirect();
+
+            $this->assertSame($person->id, $team->fresh()->team_lead_id);
+        }
     }
 
     public function test_team_pages_render_with_the_lead_picker(): void

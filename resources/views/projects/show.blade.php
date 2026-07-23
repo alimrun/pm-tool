@@ -24,7 +24,7 @@
                         <x-icon name="calendar" class="h-4 w-4" />
                         Timeline
                     </a>
-                    @if (auth()->user()->isAdmin())
+                    @if (auth()->user()->canManageWorkspace())
                         <a href="{{ route('projects.edit', $project) }}" class="btn-secondary btn-sm">
                             <x-icon name="pencil" class="h-4 w-4" />
                             Edit

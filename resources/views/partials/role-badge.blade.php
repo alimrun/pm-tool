@@ -6,6 +6,7 @@
     $pill = match ($role) {
         'admin' => 'bg-indigo-100 text-indigo-700',
         'cto' => 'bg-purple-100 text-purple-700',
+        'tech_lead' => 'bg-emerald-100 text-emerald-700',
         'team_lead' => 'bg-cyan-100 text-cyan-700',
         'developer' => 'bg-blue-100 text-blue-700',
         'qa' => 'bg-amber-100 text-amber-800',
@@ -14,6 +15,7 @@
     $text = match ($role) {
         'admin' => 'text-indigo-600',
         'cto' => 'text-purple-600',
+        'tech_lead' => 'text-emerald-700',
         'team_lead' => 'text-cyan-700',
         'developer' => 'text-blue-600',
         'qa' => 'text-amber-700',
@@ -22,6 +24,7 @@
     $dot = match ($role) {
         'admin' => 'bg-indigo-500',
         'cto' => 'bg-purple-500',
+        'tech_lead' => 'bg-emerald-500',
         'team_lead' => 'bg-cyan-500',
         'developer' => 'bg-blue-500',
         'qa' => 'bg-amber-500',

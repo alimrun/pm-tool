@@ -4,14 +4,14 @@ use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\CommentController;
-use App\Http\Controllers\EventController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EventController;
+use App\Http\Controllers\MeetingNoteController;
+use App\Http\Controllers\NoteController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\ReleaseController;
 use App\Http\Controllers\ReleaseDocumentController;
-use App\Http\Controllers\MeetingNoteController;
-use App\Http\Controllers\NoteController;
 use App\Http\Controllers\ReleaseOffDayController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TasksheetController;
@@ -25,10 +25,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/dashboard', DashboardController::class)->name('dashboard');
 
     /*
-     | Admin-only writes. Registered first so `.../create` and `.../edit`
-     | resolve before the `{model}` show routes below.
+     | Lead-only writes — the leadership tier (admin, CTO, tech lead, team lead)
+     | shares one identical access level. Registered first so `.../create` and
+     | `.../edit` resolve before the `{model}` show routes below.
      */
-    Route::middleware('admin')->group(function () {
+    Route::middleware('lead')->group(function () {
         // Projects
         Route::get('projects/create', [ProjectController::class, 'create'])->name('projects.create');
         Route::post('projects', [ProjectController::class, 'store'])->name('projects.store');
@@ -38,7 +39,7 @@ Route::middleware('auth')->group(function () {
         Route::post('projects/{project}/archive', [ProjectController::class, 'archive'])->name('projects.archive');
         Route::post('projects/{project}/restore', [ProjectController::class, 'restore'])->name('projects.restore');
 
-        // Teams (settings/lifecycle stay admin-only; membership is opened below)
+        // Teams (settings/lifecycle; membership is also opened below)
         Route::get('teams/create', [TeamController::class, 'create'])->name('teams.create');
         Route::post('teams', [TeamController::class, 'store'])->name('teams.store');
         Route::get('teams/{team}/edit', [TeamController::class, 'edit'])->name('teams.edit');
@@ -50,7 +51,7 @@ Route::middleware('auth')->group(function () {
     });
 
     /*
-     | Release planning & team membership — admins and team leads.
+     | Release planning & team membership — the leadership tier.
      | Registered before the `{model}` show routes so `.../create` and
      | `.../edit` resolve first.
      */
@@ -160,7 +161,7 @@ Route::middleware('auth')->group(function () {
     Route::put('tasksheet/entries', [TasksheetController::class, 'upsert'])->name('tasksheet.entries.upsert');
 
     /*
-     | User management — Admins and CTOs only.
+     | User management — the leadership tier.
      */
     Route::middleware('manage-users')->group(function () {
         Route::get('users', [UserController::class, 'index'])->name('users.index');

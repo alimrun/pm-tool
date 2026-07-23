@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex items-center justify-between">
             <h2 class="page-title">Teams</h2>
-            @if (auth()->user()->isAdmin())
+            @if (auth()->user()->canManageWorkspace())
                 <a href="{{ route('teams.create') }}" class="btn-primary btn-sm">
                     <x-icon name="plus" class="h-4 w-4" />
                     New team
@@ -100,7 +100,7 @@
                                     <td class="px-6 py-4">
                                         <div class="flex items-center justify-end gap-1">
                                             <x-action-btn icon="eye" tone="brand" :href="route('teams.show', $team)" title="View" aria-label="View {{ $team->name }}" />
-                                            @if (auth()->user()->isAdmin())
+                                            @if (auth()->user()->canManageWorkspace())
                                                 <x-action-btn icon="pencil" tone="brand" :href="route('teams.edit', $team)" title="Edit" aria-label="Edit {{ $team->name }}" />
                                                 @if ($team->isArchived())
                                                     <form method="POST" action="{{ route('teams.restore', $team) }}">@csrf

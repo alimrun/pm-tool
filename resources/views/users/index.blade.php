@@ -19,6 +19,7 @@
                     $roleColors = [
                         'admin' => '#6366f1',      // indigo-500
                         'cto' => '#a855f7',        // purple-500
+                        'tech_lead' => '#10b981',  // emerald-500
                         'team_lead' => '#06b6d4',  // cyan-500
                         'developer' => '#3b82f6',  // blue-500
                         'qa' => '#f59e0b',         // amber-500

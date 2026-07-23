@@ -31,20 +31,20 @@ class UserManagementTest extends TestCase
         ], $overrides);
     }
 
-    public function test_admin_and_cto_can_create_users_others_cannot(): void
+    public function test_leads_can_create_users_others_cannot(): void
     {
-        $this->actingAs($this->user(User::ROLE_ADMIN))
-            ->post(route('users.store'), $this->newUserPayload(['email' => 'a@example.com']))
-            ->assertRedirect(route('users.index'));
+        // Every leadership role (admin, CTO, tech lead, team lead) may manage users.
+        $i = 0;
+        foreach (User::LEAD_ROLES as $role) {
+            $this->actingAs($this->user($role))
+                ->post(route('users.store'), $this->newUserPayload(['email' => "lead-$i@example.com"]))
+                ->assertRedirect(route('users.index'));
+            $this->assertDatabaseHas('users', ['email' => "lead-$i@example.com", 'role' => 'developer']);
+            $i++;
+        }
 
-        $this->actingAs($this->user(User::ROLE_CTO))
-            ->post(route('users.store'), $this->newUserPayload(['email' => 'b@example.com']))
-            ->assertRedirect(route('users.index'));
-
-        $this->assertDatabaseHas('users', ['email' => 'a@example.com', 'role' => 'developer']);
-        $this->assertDatabaseHas('users', ['email' => 'b@example.com']);
-
-        foreach ([User::ROLE_TEAM_LEAD, User::ROLE_DEVELOPER, User::ROLE_QA, User::ROLE_VIEWER] as $role) {
+        // Non-leads may neither see the directory nor create users.
+        foreach ([User::ROLE_DEVELOPER, User::ROLE_QA, User::ROLE_VIEWER] as $role) {
             $this->actingAs($this->user($role))
                 ->get(route('users.index'))
                 ->assertForbidden();
