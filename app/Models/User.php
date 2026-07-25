@@ -140,6 +140,37 @@ class User extends Authenticatable
     }
 
     /**
+     * Org-level leadership (admin, CTO, tech lead) oversee every team's
+     * performance and own the competency catalog; a team lead is scoped to the
+     * team(s) they are the assigned lead of.
+     */
+    public function canOverseeAllTeams(): bool
+    {
+        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_CTO, self::ROLE_TECH_LEAD], true);
+    }
+
+    /** True when this user is the assigned lead of the given team. */
+    public function leadsTeam(Team $team): bool
+    {
+        return $team->team_lead_id === $this->id;
+    }
+
+    /**
+     * May this user view and evaluate performance for the given team? Org-level
+     * leads may act on any team; a team lead only on teams they lead.
+     */
+    public function canAccessTeamPerformance(Team $team): bool
+    {
+        return $this->canOverseeAllTeams() || $this->leadsTeam($team);
+    }
+
+    /** May this user configure the competency catalog (org-level leads only). */
+    public function canManageCompetencies(): bool
+    {
+        return $this->canOverseeAllTeams();
+    }
+
+    /**
      * Developers and QA work from the board/calendar/notes/meetings/tasksheet
      * only — planning surfaces (releases, projects, teams, activity) are off
      * limits and their dashboard is the personal member dashboard.

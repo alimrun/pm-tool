@@ -21,6 +21,9 @@ class DatabaseSeeder extends Seeder
 
     public function run(): void
     {
+        // --- Performance competency catalog (idempotent) -----------------
+        $this->call(PerformanceCompetencySeeder::class);
+
         // --- Users -------------------------------------------------------
         $admin = User::updateOrCreate(
             ['email' => 'admin@example.com'],

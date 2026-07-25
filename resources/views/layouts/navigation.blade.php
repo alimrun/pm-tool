@@ -12,6 +12,11 @@
         ['label' => 'Teams', 'route' => 'teams.index', 'patterns' => ['teams.*'], 'icon' => 'team'],
         ['label' => 'Activity', 'route' => 'activity.index', 'patterns' => ['activity.*'], 'icon' => 'activity'],
     ];
+    if ($user->isLead()) {
+        // Performance is lead-only (sensitive HR data). Never offered to
+        // developers, QA, or viewers; the routes enforce this server-side too.
+        $nav[] = ['label' => 'Performance', 'route' => 'performance.index', 'patterns' => ['performance.*'], 'icon' => 'activity'];
+    }
     if ($user->canManageUsers()) {
         $nav[] = ['label' => 'Users', 'route' => 'users.index', 'patterns' => ['users.*'], 'icon' => 'users'];
     }
