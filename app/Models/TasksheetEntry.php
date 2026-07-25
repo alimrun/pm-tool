@@ -11,9 +11,10 @@ use Illuminate\Support\HtmlString;
 
 /**
  * One member's row on a team's daily tasksheet: morning plan, day-end result,
- * points and tickets — or an absence (casual/sick leave). The `feedback`
- * column is the team lead's private note and must only ever be rendered
- * behind a User::isLead() gate.
+ * points and tickets — or a leave. A full-day leave (casual/sick) clears the
+ * task fields; a half-day leave keeps them, since the member still works and
+ * logs tasks. The `feedback` column is the team lead's private note and must
+ * only ever be rendered behind a User::isLead() gate.
  */
 class TasksheetEntry extends Model
 {
@@ -22,7 +23,17 @@ class TasksheetEntry extends Model
     public const LEAVE_TYPES = [
         'casual' => 'Casual leave',
         'sick' => 'Sick leave',
+        'half_day' => 'Half day leave',
     ];
+
+    /**
+     * Leaves that mean a full day off — these clear the row's task fields and
+     * count the member as absent. Half-day leave is deliberately excluded:
+     * the member still works part of the day and logs tasks as normal.
+     *
+     * @var array<int, string>
+     */
+    public const FULL_DAY_LEAVE_TYPES = ['casual', 'sick'];
 
     /**
      * The fillable task columns that make up a "complete" day's row.
@@ -109,15 +120,30 @@ class TasksheetEntry extends Model
         return $this->leave_type !== null;
     }
 
+    /** A full day off (casual/sick) — clears task fields, member is absent. */
+    public function isFullDayLeave(): bool
+    {
+        return in_array($this->leave_type, self::FULL_DAY_LEAVE_TYPES, true);
+    }
+
+    /** Half-day leave — a leave marker, but the member still logs tasks. */
+    public function isHalfDay(): bool
+    {
+        return $this->leave_type === 'half_day';
+    }
+
     public function filledFieldCount(): int
     {
         return collect(self::TASK_FIELDS)->filter(fn (string $f) => filled($this->{$f}))->count();
     }
 
-    /** Every task field has a value (0 counts as a value). */
+    /**
+     * Every task field has a value (0 counts as a value). Full-day leave rows
+     * have no task content; half-day rows are treated like normal work rows.
+     */
     public function isFullyFilled(): bool
     {
-        return ! $this->isOnLeave() && $this->filledFieldCount() === count(self::TASK_FIELDS);
+        return ! $this->isFullDayLeave() && $this->filledFieldCount() === count(self::TASK_FIELDS);
     }
 
     /** Some task fields have values, but not all — the row still needs work. */
@@ -125,7 +151,7 @@ class TasksheetEntry extends Model
     {
         $count = $this->filledFieldCount();
 
-        return ! $this->isOnLeave() && $count > 0 && $count < count(self::TASK_FIELDS);
+        return ! $this->isFullDayLeave() && $count > 0 && $count < count(self::TASK_FIELDS);
     }
 
     public function leaveLabel(): string

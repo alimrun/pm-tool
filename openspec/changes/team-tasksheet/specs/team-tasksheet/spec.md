@@ -83,23 +83,27 @@ The system SHALL provide a per-row Feedback field that is visible to and editabl
 - **WHEN** a member updates their row after a lead has left feedback
 - **THEN** the lead's feedback remains unchanged
 
-### Requirement: Mark absence
-The system SHALL allow a member's row to be marked absent for the day with a leave type of casual leave or sick leave, by the member themselves or a lead. An absent row SHALL display a leave badge in place of task content, and saving an absence SHALL clear the row's task fields. Clearing the absence returns the row to a normal working row.
+### Requirement: Mark leave
+The system SHALL allow a member's row to be marked with a leave type — a full-day leave (casual or sick) or a half-day leave — by the member themselves or a lead. A full-day leave SHALL display a leave badge in place of task content and SHALL clear the row's task fields. A half-day leave SHALL keep the task fields editable and count toward the row's fill status, showing a "Half day" marker alongside the tasks. Clearing the leave returns the row to a normal working row.
 
-#### Scenario: Member marks themselves absent
+#### Scenario: Member marks a full-day leave
 - **WHEN** a member saves their row with leave type casual or sick
-- **THEN** the entry stores the leave type and the sheet shows a leave badge on their row
+- **THEN** the entry stores the leave type and the sheet shows a leave badge in place of the tasks
 
-#### Scenario: Lead marks a member absent
+#### Scenario: Lead marks a member on leave
 - **WHEN** a lead saves a member's row with a leave type
-- **THEN** the absence is stored
+- **THEN** the leave is stored
 
-#### Scenario: Absence clears task fields
-- **WHEN** a row containing task values is saved with a leave type
+#### Scenario: Full-day leave clears task fields
+- **WHEN** a row containing task values is saved with a casual or sick leave
 - **THEN** the stored plan, result, comment, tickets, and point values are cleared
 
+#### Scenario: Half-day leave keeps tasks
+- **WHEN** a member saves their row with half-day leave together with task values
+- **THEN** the entry stores the half-day leave and retains the task values, and the sheet shows both the tasks and a "Half day" marker
+
 #### Scenario: Invalid leave type rejected
-- **WHEN** a row is saved with a leave type other than casual or sick
+- **WHEN** a row is saved with a leave type other than casual, sick, or half-day
 - **THEN** the system rejects it with a validation error
 
 ### Requirement: Automatic absence for unfilled past days

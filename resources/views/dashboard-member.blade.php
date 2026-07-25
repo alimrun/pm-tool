@@ -67,8 +67,13 @@
                                     $sheetUrl = route('tasksheet.index', ['team' => $team->id]);
                                 @endphp
                                 <li class="flex items-center justify-between gap-3 text-sm">
-                                    <span class="truncate text-slate-700">{{ $team->name }}</span>
-                                    @if ($entry?->isOnLeave())
+                                    <span class="truncate text-slate-700">
+                                        {{ $team->name }}
+                                        @if ($entry?->isHalfDay())
+                                            <span class="ml-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[11px] font-medium text-amber-700">Half day</span>
+                                        @endif
+                                    </span>
+                                    @if ($entry?->isFullDayLeave())
                                         <a href="{{ $sheetUrl }}" class="flex-none rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700 hover:bg-sky-100">{{ $entry->leaveLabel() }}</a>
                                     @elseif ($entry?->isFullyFilled())
                                         <a href="{{ $sheetUrl }}" class="flex-none rounded-full bg-emerald-50 px-2.5 py-0.5 text-xs font-medium text-emerald-700 hover:bg-emerald-100">Filled ✓</a>

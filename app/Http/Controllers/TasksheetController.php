@@ -158,8 +158,9 @@ class TasksheetController extends Controller
             'plan', 'result', 'comment', 'tickets', 'work_points', 'ticket_count', 'ticket_points', 'leave_type',
         ])->all();
 
-        // An absent member has no task content — a leave save clears the row.
-        if (! empty($fields['leave_type'])) {
+        // A full-day-absent member has no task content — that leave clears the
+        // row. Half-day leave keeps the tasks: the member still works part-day.
+        if (in_array($fields['leave_type'] ?? null, TasksheetEntry::FULL_DAY_LEAVE_TYPES, true)) {
             $fields = ['leave_type' => $fields['leave_type']] + array_fill_keys(
                 ['plan', 'result', 'comment', 'tickets', 'work_points', 'ticket_count', 'ticket_points'], null
             );
