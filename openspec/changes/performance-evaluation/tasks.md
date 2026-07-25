@@ -1,17 +1,17 @@
 ## 1. Database & Models
 
-- [ ] 1.1 Create `performance_competencies` migration: `key` (unique), `name`, nullable `description`, `category` (string), `role_scope` (string), `cadence` (string), `weight` (unsigned smallint default 1), `active` (bool default true), `position` (int default 0), timestamps
-- [ ] 1.2 Create `performance_scores` migration: `team_id` + `user_id` FKs (cascade), `evaluator_id` FK (nullOnDelete), `competency_id` FK (restrict on delete), `period_type` (string), `period_start` + `period_end` (date), `score` (unsigned tinyint), nullable text `note`, timestamps; unique (`team_id`,`user_id`,`competency_id`,`period_start`); indexes (`team_id`,`period_start`) and (`user_id`,`period_start`)
-- [ ] 1.3 Create `PerformanceCompetency` model: fillable, bool `active` cast, `CATEGORIES`/`ROLE_SCOPES`/`CADENCES` const maps, `scores()` hasMany, `appliesToRole(string)` helper, `active()` + `forCadence()` + ordered scopes
-- [ ] 1.4 Create `PerformanceScore` model: fillable, casts (`period_start`/`period_end` date, `score` int), `SCALE` const map (1→5 anchor labels), `scoreLabel()`, `member()`/`team()`/`evaluator()`/`competency()` belongsTo relations; deliberately does NOT use `RecordsActivity`
-- [ ] 1.5 Add `User::leadsTeam(Team)` and `User::ledTeamIds()` helpers (assigned lead of the team); confirm `isLead()` covers admin/CTO/team_lead
-- [ ] 1.6 Run migrations and verify schema
+- [x] 1.1 Create `performance_competencies` migration: `key` (unique), `name`, nullable `description`, `category` (string), `role_scope` (string), `cadence` (string), `weight` (unsigned smallint default 1), `active` (bool default true), `position` (int default 0), timestamps
+- [x] 1.2 Create `performance_scores` migration: `team_id` + `user_id` FKs (cascade), `evaluator_id` FK (nullOnDelete), `competency_id` FK (restrict on delete), `period_type` (string), `period_start` + `period_end` (date), `score` (unsigned tinyint), nullable text `note`, timestamps; unique (`team_id`,`user_id`,`competency_id`,`period_start`); indexes (`team_id`,`period_start`) and (`user_id`,`period_start`)
+- [x] 1.3 Create `PerformanceCompetency` model: fillable, bool `active` cast, `CATEGORIES`/`ROLE_SCOPES`/`CADENCES` const maps, `scores()` hasMany, `appliesToRole(string)` helper, `active()` + `forCadence()` + ordered scopes
+- [x] 1.4 Create `PerformanceScore` model: fillable, casts (`period_start`/`period_end` date, `score` int), `SCALE` const map (1→5 anchor labels), `scoreLabel()`, `member()`/`team()`/`evaluator()`/`competency()` belongsTo relations; deliberately does NOT use `RecordsActivity`
+- [x] 1.5 Add `User::leadsTeam(Team)` and `User::ledTeamIds()` helpers (assigned lead of the team); confirm `isLead()` covers admin/CTO/team_lead
+- [x] 1.6 Run migrations and verify schema
 
 ## 2. Seeding
 
-- [ ] 2.1 Create `PerformanceCompetencySeeder` with the default catalog (Code Quality, Problem Solving, Task Completion, Understanding & Requirements, Behavior & Professionalism, Communication & Collaboration, Learning Progress, Ownership & Discipline, Test Thoroughness, Defect Detection, Attention to Detail), each with category, role scope, cadence, weight, position; use `updateOrCreate` on `key` (idempotent)
-- [ ] 2.2 Register the seeder in `DatabaseSeeder`; ensure at least one daily and one weekly competency, all four categories, and both roles are represented
-- [ ] 2.3 Run the seeder and verify the catalog
+- [x] 2.1 Create `PerformanceCompetencySeeder` with the default catalog (Code Quality, Problem Solving, Task Completion, Understanding & Requirements, Behavior & Professionalism, Communication & Collaboration, Learning Progress, Ownership & Discipline, Test Thoroughness, Defect Detection, Attention to Detail), each with category, role scope, cadence, weight, position; use `updateOrCreate` on `key` (idempotent)
+- [x] 2.2 Register the seeder in `DatabaseSeeder`; ensure at least one daily and one weekly competency, all four categories, and both roles are represented
+- [x] 2.3 Run the seeder and verify the catalog
 
 ## 3. Authorization & Access
 
