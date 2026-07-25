@@ -21,6 +21,8 @@ class NoteRequest extends FormRequest
             'body' => ['required', 'string', 'max:20000'],
             'visibility' => ['required', Rule::in(array_keys(Note::VISIBILITIES))],
             'date' => ['required', 'date'],
+            'recipients' => ['nullable', 'array'],
+            'recipients.*' => ['integer', 'exists:users,id'],
         ];
     }
 

@@ -33,9 +33,9 @@
         <input type="hidden" name="{{ $name }}[]" :value="v">
     </template>
 
-    {{-- Control: selected chips + open toggle --}}
+    {{-- Control: selected chips + open toggle. min-h-[2.5rem] matches native .field-input/.field-select (40px). --}}
     <button type="button" @click="open = !open"
-            class="flex min-h-[2.75rem] w-full flex-wrap items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1.5 text-left text-sm shadow-sm focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
+            class="flex min-h-[2.5rem] w-full flex-wrap items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-2.5 py-1 text-left text-sm text-slate-800 shadow-sm transition focus:border-brand-500 focus:outline-none focus:ring-1 focus:ring-brand-500">
         <template x-if="selected.length === 0">
             <span class="px-1 text-slate-400">{{ $placeholder }}</span>
         </template>
@@ -48,9 +48,9 @@
         <svg class="ml-auto h-4 w-4 flex-none text-slate-400" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clip-rule="evenodd"/></svg>
     </button>
 
-    {{-- Dropdown: search + checkbox list --}}
+    {{-- Dropdown: search + checkbox list. z-[45] sits above the quick-links handle (z-40). --}}
     <div x-show="open" x-cloak x-transition.opacity
-         class="absolute z-30 mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
+         class="absolute z-[45] mt-1 w-full overflow-hidden rounded-lg border border-slate-200 bg-white shadow-lg">
         <div class="border-b border-slate-100 p-2">
             <input type="text" x-model="query" @click.stop placeholder="Search…"
                    class="w-full rounded-md border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">

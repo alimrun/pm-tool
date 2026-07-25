@@ -1,4 +1,4 @@
-<x-app-layout full-height>
+<x-app-layout sticky-header>
     <x-slot name="header">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div>
@@ -48,10 +48,10 @@
         $todayOffset = $withinWindow ? $release->start_date->diffInDays($today) / $total * 100 : null;
     @endphp
 
-    {{-- Desktop: fills the app-shell's main region so the two columns scroll
-         independently with no window scrollbar. Mobile: normal document flow. --}}
-    <div class="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-hidden">
-        <div class="app-container flex min-h-0 flex-1 flex-col gap-5 py-6 sm:py-8 lg:gap-4 lg:py-5">
+    {{-- Normal document scroll. Only the page sub-header stays pinned (via
+         <x-app-layout sticky-header>); the timeline and columns scroll away. --}}
+    <div class="py-6 sm:py-8">
+        <div class="app-container space-y-6">
 
             {{-- ============ PINNED TOP BAND: alert + timeline ============
                  Planning surface — hidden from developers/QA (no timeline view). --}}
@@ -141,10 +141,10 @@
             {{-- ============ TWO-PANE REGION (independent scroll on lg) ============
                  grid-rows-1 == minmax(0,1fr): pins the single row to the container
                  height so each column scrolls internally instead of overflowing. --}}
-            <div class="grid min-h-0 flex-1 grid-cols-1 gap-6 lg:grid-cols-3 lg:grid-rows-1 lg:overflow-hidden">
+            <div class="grid grid-cols-1 gap-6 lg:grid-cols-3">
 
                 {{-- ============ MAIN COLUMN ============ --}}
-                <div class="scroll-area space-y-6 lg:col-span-2 lg:min-h-0 lg:overflow-y-auto lg:pb-6 lg:pr-2">
+                <div class="space-y-6 lg:col-span-2">
                     @if ($release->description)
                         <div class="card card-pad">
                             <h3 class="text-sm font-semibold text-slate-700">Description</h3>
@@ -263,7 +263,7 @@
                 </div>
 
                 {{-- ============ SIDEBAR ============ --}}
-                <div class="scroll-area space-y-6 lg:col-span-1 lg:min-h-0 lg:overflow-y-auto lg:pb-6 lg:pr-2">
+                <div class="space-y-6 lg:col-span-1">
 
                     {{-- Details (planning metadata — hidden from developers/QA) --}}
                     @unless (auth()->user()->hasLimitedAccess())

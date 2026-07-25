@@ -149,4 +149,66 @@ class DailyNotesTest extends TestCase
             ->post(route('notes.store'), ['date' => '2026-07-22', 'body' => '<div><br></div>', 'visibility' => 'shared'])
             ->assertSessionHasErrors('body');
     }
+
+    public function test_index_defaults_to_all_visible_notes_newest_first(): void
+    {
+        $me = User::factory()->create();
+        $this->note($me, ['date' => '2026-07-01', 'body' => 'Older note']);
+        $this->note($me, ['date' => '2026-07-25', 'body' => 'Newer note']);
+
+        // No date filter → all visible notes on one paginated list.
+        $this->actingAs($me)->get(route('notes.index'))
+            ->assertOk()
+            ->assertSee('Older note')
+            ->assertSee('Newer note')
+            ->assertSeeInOrder(['Newer note', 'Older note']);
+    }
+
+    public function test_specific_note_is_visible_only_to_recipients_and_author(): void
+    {
+        $author = User::factory()->create();
+        $recipient = User::factory()->create();
+        $outsider = User::factory()->create();
+        $lead = User::factory()->create(['role' => User::ROLE_ADMIN]);
+
+        $note = $this->note($author, ['body' => 'Just for you', 'visibility' => 'specific']);
+        $note->recipients()->sync([$recipient->id]);
+
+        // Author and the chosen recipient see it in their list…
+        $this->actingAs($author)->get(route('notes.index'))->assertOk()->assertSee('Just for you');
+        $this->actingAs($recipient)->get(route('notes.index'))->assertOk()->assertSee('Just for you');
+
+        // …but an outsider does not — and a targeted share does NOT leak to leads.
+        $this->actingAs($outsider)->get(route('notes.index'))->assertOk()->assertDontSee('Just for you');
+        $this->actingAs($lead)->get(route('notes.index'))->assertOk()->assertDontSee('Just for you');
+    }
+
+    public function test_storing_a_specific_note_syncs_recipients(): void
+    {
+        $author = User::factory()->create();
+        $a = User::factory()->create();
+        $b = User::factory()->create();
+
+        $this->actingAs($author)->post(route('notes.store'), [
+            'date' => '2026-07-22', 'body' => 'Shared with two', 'visibility' => 'specific',
+            'recipients' => [$a->id, $b->id],
+        ])->assertRedirect();
+
+        $note = Note::first();
+        $this->assertSame('specific', $note->visibility);
+        $this->assertEqualsCanonicalizing([$a->id, $b->id], $note->recipients->pluck('id')->all());
+    }
+
+    public function test_recipients_are_dropped_when_note_is_not_specific(): void
+    {
+        $author = User::factory()->create();
+        $a = User::factory()->create();
+
+        // Recipients submitted but visibility is shared → they must not be stored.
+        $this->actingAs($author)->post(route('notes.store'), [
+            'date' => '2026-07-22', 'body' => 'Public', 'visibility' => 'shared', 'recipients' => [$a->id],
+        ])->assertRedirect();
+
+        $this->assertSame(0, Note::first()->recipients()->count());
+    }
 }

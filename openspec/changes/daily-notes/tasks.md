@@ -23,3 +23,10 @@
 - [x] 4.1 Seeder: one shared + one private demo note for today
 - [x] 4.2 Feature tests: create private/shared; empty rejected; day view shows own + shared but hides others' private; author-only edit/delete
 - [x] 4.3 Migrate, build, run full suite, live smoke, then check off tasks and `openspec validate`
+
+## Revision: share-with (specific visibility) + paginated all-notes list
+
+- [x] R.1 `note_user` pivot; `Note` gains `recipients()`, `specific` visibility, `isSpecific()`/`isVisibleTo()`, and `scopeVisibleTo` includes specific-shared-with-me
+- [x] R.2 `NoteRequest` validates `recipients`; `NoteController@index` lists all visible notes newest-first, paginated, with day + range filters; store/update sync recipients only for specific notes
+- [x] R.3 Notes index rewritten (add form with visibility + "Share with" picker via `<x-multi-select>`, filter bar, paginated cards); `_card` shows date, visibility badge, and shared-with list, with recipient picker in inline edit
+- [x] R.4 Feature tests: default all-notes list, specific-note visibility (recipients/author only, not leads), recipient sync, recipients dropped when not specific

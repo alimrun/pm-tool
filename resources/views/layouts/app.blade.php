@@ -19,6 +19,9 @@
         // main region scrolls internally instead of the window. Pages request it
         // with <x-app-layout full-height>. Mobile always uses normal page scroll.
         $fullHeight = filter_var($attributes->get('full-height', false), FILTER_VALIDATE_BOOLEAN);
+        // Opt-in: pin ONLY the page sub-header below the nav while the page
+        // scrolls normally. <x-app-layout sticky-header>. Ignored under full-height.
+        $stickyHeader = filter_var($attributes->get('sticky-header', false), FILTER_VALIDATE_BOOLEAN) && ! $fullHeight;
     @endphp
     <body class="min-h-full font-sans">
         <div @class([
@@ -39,6 +42,7 @@
                 <header @class([
                     'border-b border-slate-200 bg-white',
                     'lg:flex-none' => $fullHeight,
+                    'sticky top-16 z-30 shadow-sm' => $stickyHeader,
                 ])>
                     <div class="app-container py-4 sm:py-5">
                         {{ $header }}
