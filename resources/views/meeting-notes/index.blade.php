@@ -55,8 +55,14 @@
                                     <span class="shrink-0 rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-500">General</span>
                                 @endif
                             </div>
-                            <p class="mt-1 text-xs text-slate-400">
-                                {{ $note->meeting_date->format('D, M j, Y') }} · {{ $note->author->name ?? 'Unknown' }}
+                            <p class="mt-1 flex flex-wrap items-center gap-x-1.5 gap-y-1 text-xs text-slate-400">
+                                <span>{{ $note->meeting_date->format('D, M j, Y') }} · {{ $note->author->name ?? 'Unknown' }}</span>
+                                @if ($note->attendees_count)
+                                    <span class="rounded-full bg-slate-100 px-1.5 py-0.5 font-medium text-slate-500">{{ $note->attendees_count }} {{ Str::plural('attendee', $note->attendees_count) }}</span>
+                                @endif
+                                @if ($note->isAttendeesOnly())
+                                    <span class="rounded-full bg-amber-50 px-1.5 py-0.5 font-medium text-amber-700">Attendees only</span>
+                                @endif
                             </p>
                             @unless (\App\Support\HtmlSanitizer::isEmpty($note->body))
                                 <div class="prose-notes relative mt-3 max-h-28 overflow-hidden text-sm text-slate-600 [&>*:first-child]:mt-0">

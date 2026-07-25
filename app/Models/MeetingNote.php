@@ -8,17 +8,28 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Support\HtmlString;
 
 /**
  * Minutes of a meeting — either linked to a release ("release-wise") or
- * general (no release). Visible to every authenticated user.
+ * general (no release). Records its attendees and a visibility of `everyone`
+ * (default) or `attendees` (visible only to attendees, author, and leads).
  */
 class MeetingNote extends Model
 {
     use RecordsActivity;
 
-    protected $fillable = ['release_id', 'event_id', 'created_by', 'title', 'meeting_date', 'body'];
+    public const VISIBILITY_EVERYONE = 'everyone';
+    public const VISIBILITY_ATTENDEES = 'attendees';
+
+    /** @var array<string, string> */
+    public const VISIBILITIES = [
+        self::VISIBILITY_EVERYONE => 'Everyone',
+        self::VISIBILITY_ATTENDEES => 'Attendees only',
+    ];
+
+    protected $fillable = ['release_id', 'event_id', 'created_by', 'title', 'meeting_date', 'body', 'visibility'];
 
     protected function casts(): array
     {
@@ -66,6 +77,55 @@ class MeetingNote extends Model
     public function event(): BelongsTo
     {
         return $this->belongsTo(Event::class);
+    }
+
+    /** Users recorded as having attended this meeting. */
+    public function attendees(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withTimestamps()->withTrashed();
+    }
+
+    public function isAttendeesOnly(): bool
+    {
+        return $this->visibility === self::VISIBILITY_ATTENDEES;
+    }
+
+    public function visibilityLabel(): string
+    {
+        return self::VISIBILITIES[$this->visibility] ?? ucfirst((string) $this->visibility);
+    }
+
+    /**
+     * Whether the given user may view this note. Everyone-notes are public;
+     * attendees-only notes are limited to their attendees, author, and leads.
+     */
+    public function isVisibleTo(User $user): bool
+    {
+        if (! $this->isAttendeesOnly() || $this->created_by === $user->id || $user->isLead()) {
+            return true;
+        }
+
+        // Use the loaded collection when available; otherwise a targeted query.
+        return $this->relationLoaded('attendees')
+            ? $this->attendees->contains($user->id)
+            : $this->attendees()->whereKey($user->id)->exists();
+    }
+
+    /**
+     * Restrict a query to notes the user may view (see isVisibleTo). Leads and
+     * authors always pass; other users see everyone-notes plus ones they attended.
+     */
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        if ($user->isLead()) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $q) use ($user) {
+            $q->where('visibility', self::VISIBILITY_EVERYONE)
+                ->orWhere('created_by', $user->id)
+                ->orWhereHas('attendees', fn (Builder $a) => $a->whereKey($user->id));
+        });
     }
 
     public function scopeForRelease(Builder $query, int $releaseId): Builder

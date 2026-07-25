@@ -29,18 +29,16 @@ class DevQaAccessTest extends TestCase
 
     public function test_dev_and_qa_are_forbidden_from_planning_sections(): void
     {
-        $release = $this->release();
         $dev = User::factory()->create(['role' => User::ROLE_DEVELOPER]);
         $qa = User::factory()->create(['role' => User::ROLE_QA]);
 
+        // The releases *list* and other planning surfaces stay off-limits; the
+        // release *detail* page is allowed (covered by its own tests below).
         $restricted = [
             ['get', route('releases.index')],
-            ['get', route('releases.show', $release)],
             ['get', route('projects.index')],
             ['get', route('teams.index')],
             ['get', route('activity.index')],
-            ['post', route('releases.comments.store', $release)],
-            ['post', route('releases.tasks.store', $release)],
         ];
 
         foreach ([$dev, $qa] as $user) {
@@ -63,9 +61,59 @@ class DevQaAccessTest extends TestCase
             route('meeting-notes.index'),
             route('tasksheet.index'),
             route('tasks.show', $task),
+            route('releases.show', $release),
         ] as $url) {
             $this->actingAs($dev)->get($url)->assertOk();
         }
+    }
+
+    public function test_dev_sees_restricted_release_view_without_timeline_or_edit(): void
+    {
+        $release = $this->release();
+        $dev = User::factory()->create(['role' => User::ROLE_DEVELOPER]);
+
+        $this->actingAs($dev)->get(route('releases.show', $release))
+            ->assertOk()
+            ->assertSee('Checkout v9')       // the release is viewable
+            ->assertSee('Documents')          // an allowed section
+            ->assertDontSee('Timeline')       // no phase timeline
+            ->assertDontSee('Edit release')   // no edit control
+            ->assertDontSee('Off-days')       // no planning surface
+            ->assertDontSee('Working days');  // no Details metadata card
+    }
+
+    public function test_dev_can_collaborate_on_a_release(): void
+    {
+        $release = $this->release();
+        $dev = User::factory()->create(['role' => User::ROLE_DEVELOPER]);
+
+        $this->actingAs($dev)->post(route('releases.tasks.store', $release), ['title' => 'Dev task'])
+            ->assertRedirect();
+        $this->assertSame(1, $release->tasks()->count());
+
+        $this->actingAs($dev)->post(route('releases.comments.store', $release), ['body' => 'A comment'])
+            ->assertRedirect();
+        $this->assertSame(1, $release->comments()->count());
+
+        $this->actingAs($dev)->post(route('quick-links.store'), [
+            'label' => 'Staging', 'url' => 'https://staging.example.com', 'release_id' => $release->id,
+        ])->assertRedirect();
+
+        $this->actingAs($dev)->post(route('releases.documents.store', $release), [
+            'document' => \Illuminate\Http\UploadedFile::fake()->create('spec.pdf', 10, 'application/pdf'),
+        ])->assertRedirect();
+        $this->assertSame(1, $release->documents()->count());
+    }
+
+    public function test_viewer_cannot_upload_documents(): void
+    {
+        $release = $this->release();
+        $viewer = User::factory()->create(['role' => User::ROLE_VIEWER]);
+
+        $this->actingAs($viewer)->post(route('releases.documents.store', $release), [
+            'document' => \Illuminate\Http\UploadedFile::fake()->create('spec.pdf', 10, 'application/pdf'),
+        ])->assertForbidden();
+        $this->assertSame(0, $release->documents()->count());
     }
 
     public function test_other_roles_are_unaffected(): void
@@ -96,16 +144,17 @@ class DevQaAccessTest extends TestCase
             ->assertSee('Activity');
     }
 
-    public function test_release_name_is_plain_text_for_dev_on_task_page(): void
+    public function test_release_name_links_to_detail_page_for_dev_on_task_page(): void
     {
         $release = $this->release();
         $dev = User::factory()->create(['role' => User::ROLE_DEVELOPER]);
         $task = Task::create(['release_id' => $release->id, 'title' => 'Fix login', 'status' => 'todo']);
 
+        // Dev can now reach release details, so the name is a link again.
         $this->actingAs($dev)->get(route('tasks.show', $task))
             ->assertOk()
             ->assertSee('Checkout v9')
-            ->assertDontSee('/releases/'.$release->id, false);
+            ->assertSee(route('releases.show', $release), false);
     }
 
     public function test_dev_gets_member_dashboard_with_tasks_sheet_and_meetings(): void

@@ -1,5 +1,4 @@
 @php
-    $selected = collect(old('attendees', $selectedAttendees ?? []))->map(fn ($i) => (int) $i)->all();
     $fmt = fn ($dt) => $dt ? \Illuminate\Support\Carbon::parse($dt)->format('Y-m-d\TH:i') : '';
 @endphp
 <div class="space-y-6">
@@ -62,14 +61,15 @@
     </div>
 
     <div>
-        <label for="attendees" class="block text-sm font-medium text-slate-700">Attendees <span class="text-slate-400">(optional)</span></label>
-        <select id="attendees" name="attendees[]" multiple size="6"
-                class="field-input">
-            @foreach ($users as $u)
-                <option value="{{ $u->id }}" @selected(in_array($u->id, $selected, true))>{{ $u->name }} ({{ $u->roleLabel() }})</option>
-            @endforeach
-        </select>
-        <p class="mt-1 text-xs text-slate-400">Hold ⌘/Ctrl to select multiple.</p>
+        <label class="block text-sm font-medium text-slate-700">Attendees <span class="text-slate-400">(optional)</span></label>
+        <div class="mt-1">
+            <x-multi-select
+                name="attendees"
+                :options="$users->map(fn ($u) => ['value' => $u->id, 'label' => $u->name, 'hint' => $u->roleLabel()])"
+                :selected="$selectedAttendees ?? []"
+                placeholder="Add attendees…" />
+        </div>
+        @error('attendees') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
     </div>
 
     <div>

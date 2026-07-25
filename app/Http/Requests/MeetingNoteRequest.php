@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\MeetingNote;
 use App\Support\HtmlSanitizer;
 use Illuminate\Contracts\Validation\Validator;
 use Illuminate\Foundation\Http\FormRequest;
@@ -30,6 +31,9 @@ class MeetingNoteRequest extends FormRequest
             ],
             'event_id' => ['nullable', 'integer', 'exists:events,id'],
             'body' => ['required', 'string', 'max:20000'],
+            'visibility' => ['nullable', Rule::in(array_keys(MeetingNote::VISIBILITIES))],
+            'attendees' => ['nullable', 'array'],
+            'attendees.*' => ['integer', 'exists:users,id'],
         ];
     }
 

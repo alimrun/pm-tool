@@ -189,12 +189,12 @@ class UserManagementTest extends TestCase
         $this->actingAs($qa)->patch(route('tasks.status', $task), ['status' => 'done'])->assertRedirect();
         $this->assertSame('done', $task->fresh()->status);
 
-        // And comment — on the task (release pages are off limits for QA).
+        // And comment — on the task and on the release (QA may collaborate).
         $this->actingAs($qa)->post(route('tasks.comments.store', $task), ['body' => 'Looks good'])->assertRedirect();
         $this->assertSame(1, $task->comments()->count());
+        $this->actingAs($qa)->post(route('releases.comments.store', $release), ['body' => 'On the release'])->assertRedirect();
 
-        // Release surfaces are forbidden for QA (dev-qa-restricted-access).
-        $this->actingAs($qa)->post(route('releases.comments.store', $release), ['body' => 'nope'])->assertForbidden();
+        // But release *editing* stays forbidden for QA (dev-qa-restricted-access).
         $this->actingAs($qa)->get(route('releases.edit', $release))->assertForbidden();
     }
 }

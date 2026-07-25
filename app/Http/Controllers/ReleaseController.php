@@ -107,8 +107,12 @@ class ReleaseController extends Controller
         $release->load([
             'project', 'team', 'phases', 'documents.uploader',
             'rootTasks.subtasks.assignee', 'rootTasks.assignee', 'rootTasks.comments',
-            'offDays', 'comments.user', 'members', 'meetingNotes.author',
+            'offDays', 'comments.user', 'members',
         ]);
+
+        // Meeting notes the viewer may see (attendees-only ones are filtered out).
+        $release->setRelation('meetingNotes', $release->meetingNotes()
+            ->with('author')->visibleTo(request()->user())->get());
 
         $conflicts = $this->overlap->conflictsFor(
             $release->team_id,

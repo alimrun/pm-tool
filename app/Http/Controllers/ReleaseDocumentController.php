@@ -13,6 +13,7 @@ class ReleaseDocumentController extends Controller
 {
     public function store(ReleaseDocumentRequest $request, Release $release): RedirectResponse
     {
+        // Upload authorization (non-viewers only) lives in ReleaseDocumentRequest.
         $file = $request->file('document');
         $path = $file->store("releases/{$release->id}", 'local');
 

@@ -40,11 +40,7 @@
                         <div>
                             <dt class="text-xs font-medium uppercase tracking-wide text-slate-500">Release</dt>
                             <dd class="mt-1 text-sm">
-                                @if (auth()->user()->hasLimitedAccess())
-                                    <span class="text-slate-800">{{ $event->release->name }}</span>
-                                @else
-                                    <a href="{{ route('releases.show', $event->release) }}" class="text-indigo-600 hover:underline">{{ $event->release->name }}</a>
-                                @endif
+                                <a href="{{ route('releases.show', $event->release) }}" class="text-indigo-600 hover:underline">{{ $event->release->name }}</a>
                             </dd>
                         </div>
                     @endif

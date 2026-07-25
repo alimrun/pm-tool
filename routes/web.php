@@ -71,9 +71,7 @@ Route::middleware('auth')->group(function () {
         Route::post('releases/{release}/complete', [ReleaseController::class, 'complete'])->name('releases.complete');
         Route::post('releases/{release}/reopen', [ReleaseController::class, 'reopen'])->name('releases.reopen');
 
-        // Release documents (write)
-        Route::post('releases/{release}/documents', [ReleaseDocumentController::class, 'store'])
-            ->name('releases.documents.store');
+        // Release document deletion stays lead-only (upload is opened below).
         Route::delete('releases/{release}/documents/{document}', [ReleaseDocumentController::class, 'destroy'])
             ->name('releases.documents.destroy')
             ->scopeBindings();
@@ -99,19 +97,28 @@ Route::middleware('auth')->group(function () {
         Route::get('teams', [TeamController::class, 'index'])->name('teams.index');
         Route::get('teams/{team}', [TeamController::class, 'show'])->name('teams.show');
 
+        // The releases *list* (a planning overview) stays lead/viewer only;
+        // the detail page below is open to developers/QA.
         Route::get('releases', [ReleaseController::class, 'index'])->name('releases.index');
-        Route::get('releases/{release}', [ReleaseController::class, 'show'])->name('releases.show');
-        Route::get('releases/{release}/documents/{document}', [ReleaseDocumentController::class, 'download'])
-            ->name('releases.documents.download')
-            ->scopeBindings();
-
-        // Release-scoped collaboration writes live with the release pages.
-        Route::post('releases/{release}/tasks', [TaskController::class, 'store'])->name('releases.tasks.store');
-        Route::post('releases/{release}/comments', [CommentController::class, 'storeForRelease'])->name('releases.comments.store');
 
         // Activity feed
         Route::get('activity', [ActivityController::class, 'index'])->name('activity.index');
     });
+
+    /*
+     | Release details — viewable by every authenticated user, developers/QA
+     | included (they get a restricted, no-edit view). Collaboration on a
+     | release (tasks, comments, links, documents) lives here too.
+     */
+    Route::get('releases/{release}', [ReleaseController::class, 'show'])->name('releases.show');
+    Route::get('releases/{release}/documents/{document}', [ReleaseDocumentController::class, 'download'])
+        ->name('releases.documents.download')
+        ->scopeBindings();
+    Route::post('releases/{release}/tasks', [TaskController::class, 'store'])->name('releases.tasks.store');
+    Route::post('releases/{release}/comments', [CommentController::class, 'storeForRelease'])->name('releases.comments.store');
+    // Upload is open to contributors; a non-viewer guard lives in the controller.
+    Route::post('releases/{release}/documents', [ReleaseDocumentController::class, 'store'])
+        ->name('releases.documents.store');
 
     /*
      | Collaboration — any authenticated user (admin or viewer) may participate.

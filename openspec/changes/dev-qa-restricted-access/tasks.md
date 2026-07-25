@@ -28,3 +28,11 @@
 - [x] 5.1 `TasksheetEntry`: `TASK_FIELDS` const, `filledFieldCount()`, `isFullyFilled()`, `isPartiallyFilled()` helpers
 - [x] 5.2 Member dashboard: four linked statuses per team — Not filled / Partially filled (with n/7 count) / Filled ✓ / leave label — all linking to that team's sheet for today
 - [x] 5.3 Feature tests: partial row shows "Partially filled", full row shows "Filled ✓", statuses link to the sheet
+
+## 6. Revision: developers/QA get a restricted release detail view
+
+- [x] 6.1 Routes: move `releases.show`, document download, `releases.tasks.store`, `releases.comments.store` out of `full-access` to the general authenticated section; move document upload out of `manage-releases` (releases *list*, projects, teams, activity stay `full-access`)
+- [x] 6.2 `ReleaseDocumentController@store`: block pure viewers (leads + dev/QA may upload)
+- [x] 6.3 `releases/show`: hide timeline band, off-days, history, edit/complete controls for limited users; upload form gated to non-viewers; members stay view-only (edit already lead-gated)
+- [x] 6.4 Revert release-name link degradation — names link to the detail page for all roles (board card/header, task page, meeting note, event)
+- [x] 6.5 Feature tests: dev/QA can view a release + create task/comment/link/upload, but 403 on releases index/projects/teams/activity and cannot edit; viewer cannot upload; release names render as links

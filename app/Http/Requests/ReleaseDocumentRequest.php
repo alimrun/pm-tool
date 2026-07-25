@@ -8,7 +8,10 @@ class ReleaseDocumentRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()?->canManageReleases() ?? false;
+        // Contributors (leads + developers/QA) may upload; pure viewers may not.
+        $user = $this->user();
+
+        return $user !== null && ! $user->isViewer();
     }
 
     public function rules(): array

@@ -53,7 +53,9 @@
     <div class="lg:flex lg:min-h-0 lg:flex-1 lg:flex-col lg:overflow-hidden">
         <div class="app-container flex min-h-0 flex-1 flex-col gap-5 py-6 sm:py-8 lg:gap-4 lg:py-5">
 
-            {{-- ============ PINNED TOP BAND: alert + timeline ============ --}}
+            {{-- ============ PINNED TOP BAND: alert + timeline ============
+                 Planning surface — hidden from developers/QA (no timeline view). --}}
+            @unless (auth()->user()->hasLimitedAccess())
             <div class="flex flex-none flex-col gap-4">
 
                 @if ($conflicts->isNotEmpty())
@@ -134,6 +136,7 @@
                     </div>
                 </section>
             </div>
+            @endunless
 
             {{-- ============ TWO-PANE REGION (independent scroll on lg) ============
                  grid-rows-1 == minmax(0,1fr): pins the single row to the container
@@ -262,7 +265,8 @@
                 {{-- ============ SIDEBAR ============ --}}
                 <div class="scroll-area space-y-6 lg:col-span-1 lg:min-h-0 lg:overflow-y-auto lg:pb-6 lg:pr-2">
 
-                    {{-- Details --}}
+                    {{-- Details (planning metadata — hidden from developers/QA) --}}
+                    @unless (auth()->user()->hasLimitedAccess())
                     <div class="card card-pad">
                         <h3 class="text-sm font-semibold text-slate-700">Details</h3>
                         <dl class="mt-4 space-y-3 text-sm">
@@ -302,6 +306,7 @@
                             </div>
                         </dl>
                     </div>
+                    @endunless
 
                     {{-- Members --}}
                     <div class="card">
@@ -372,7 +377,8 @@
                         </div>
                     @endif
 
-                    {{-- Off-days --}}
+                    {{-- Off-days (planning surface — hidden from developers/QA) --}}
+                    @unless (auth()->user()->hasLimitedAccess())
                     <div class="card">
                         <div class="flex items-center justify-between border-b border-slate-100 px-5 py-4">
                             <h3 class="text-sm font-semibold text-slate-700">Off-days ({{ $release->offDays->count() }})</h3>
@@ -418,6 +424,7 @@
                             </ul>
                         @endif
                     </div>
+                    @endunless
 
                     {{-- Documents --}}
                     <div class="card">
@@ -425,7 +432,7 @@
                             <h3 class="text-sm font-semibold text-slate-700">Documents ({{ $release->documents->count() }})</h3>
                         </div>
 
-                        @if (auth()->user()->canManageReleases())
+                        @unless (auth()->user()->isViewer())
                             <form method="POST" action="{{ route('releases.documents.store', $release) }}" enctype="multipart/form-data" class="space-y-2 border-b border-slate-100 px-5 py-4">
                                 @csrf
                                 <input type="file" name="document" required
@@ -436,7 +443,7 @@
                                 </div>
                                 @error('document') <p class="text-sm text-rose-600">{{ $message }}</p> @enderror
                             </form>
-                        @endif
+                        @endunless
 
                         @if ($release->documents->isEmpty())
                             <div class="px-5 py-6 text-center text-sm text-slate-400">No documents attached.</div>
@@ -461,7 +468,8 @@
                         @endif
                     </div>
 
-                    {{-- History --}}
+                    {{-- History (activity is a planning surface — hidden from developers/QA) --}}
+                    @unless (auth()->user()->hasLimitedAccess())
                     <div class="card" x-data="{ open: false }">
                         <button type="button" @click="open = !open" class="flex w-full items-center justify-between px-5 py-4 text-left">
                             <h3 class="text-sm font-semibold text-slate-700">History ({{ $history->count() }})</h3>
@@ -471,6 +479,7 @@
                             @include('partials.activity-list', ['activities' => $history])
                         </div>
                     </div>
+                    @endunless
                 </div>
             </div>
         </div>

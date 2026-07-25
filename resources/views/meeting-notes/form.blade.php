@@ -32,6 +32,30 @@
         </div>
     </div>
 
+    <div class="grid gap-6 sm:grid-cols-2">
+        <div>
+            <label class="block text-sm font-medium text-slate-700">Attendees <span class="text-slate-400">(optional)</span></label>
+            <div class="mt-1">
+                <x-multi-select
+                    name="attendees"
+                    :options="$users->map(fn ($u) => ['value' => $u->id, 'label' => $u->name, 'hint' => $u->roleLabel()])"
+                    :selected="$selectedAttendees ?? []"
+                    placeholder="Add attendees…" />
+            </div>
+            @error('attendees') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
+        </div>
+        <div>
+            <label for="visibility" class="block text-sm font-medium text-slate-700">Visibility</label>
+            <select id="visibility" name="visibility" class="field-input">
+                @foreach (\App\Models\MeetingNote::VISIBILITIES as $val => $label)
+                    <option value="{{ $val }}" @selected(old('visibility', $meetingNote->visibility ?? 'everyone') === $val)>{{ $label }}</option>
+                @endforeach
+            </select>
+            <p class="mt-1 text-xs text-slate-400">“Attendees only” hides the note from everyone but its attendees, you, and team leads.</p>
+            @error('visibility') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
+        </div>
+    </div>
+
     <div>
         <label for="meeting-note-body" class="block text-sm font-medium text-slate-700">Notes</label>
         <input id="meeting-note-body" type="hidden" name="body" value="{{ old('body', $meetingNote->body) }}">

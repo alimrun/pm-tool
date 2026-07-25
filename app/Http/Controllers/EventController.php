@@ -35,7 +35,11 @@ class EventController extends Controller
 
     public function show(Event $event): View
     {
-        $event->load(['creator', 'release', 'attendees', 'meetingNotes.author']);
+        $event->load(['creator', 'release', 'attendees']);
+
+        // Meeting notes the viewer may see (attendees-only ones are filtered out).
+        $event->setRelation('meetingNotes', $event->meetingNotes()
+            ->with('author')->visibleTo(request()->user())->get());
 
         return view('events.show', compact('event'));
     }

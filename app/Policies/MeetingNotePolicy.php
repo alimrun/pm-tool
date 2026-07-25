@@ -19,7 +19,8 @@ class MeetingNotePolicy
 
     public function view(User $user, MeetingNote $meetingNote): bool
     {
-        return true;
+        // Attendees-only notes are limited to attendees, author, and leads.
+        return $meetingNote->isVisibleTo($user);
     }
 
     public function create(User $user): bool
