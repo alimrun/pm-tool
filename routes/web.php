@@ -8,6 +8,9 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\EventController;
 use App\Http\Controllers\MeetingNoteController;
 use App\Http\Controllers\NoteController;
+use App\Http\Controllers\PerformanceCompetencyController;
+use App\Http\Controllers\PerformanceController;
+use App\Http\Controllers\PerformanceScoreController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\QuickLinkController;
@@ -168,6 +171,31 @@ Route::middleware('auth')->group(function () {
     Route::get('tasksheet/users/{member}', [TasksheetController::class, 'user'])
         ->name('tasksheet.user')
         ->withTrashed(); // history pages must resolve deleted users too
+
+    /*
+     | Performance — lead-only (the leadership tier). Scores and analytics are
+     | sensitive HR data: developers, QA, and viewers are blocked here. Team
+     | leads are further scoped to teams they lead inside the controllers.
+     */
+    Route::middleware('lead')->group(function () {
+        Route::get('performance', [PerformanceController::class, 'index'])->name('performance.index');
+        Route::get('performance/evaluate', [PerformanceScoreController::class, 'evaluate'])->name('performance.evaluate');
+        Route::put('performance/scores', [PerformanceScoreController::class, 'upsert'])->name('performance.scores.upsert');
+        Route::get('performance/members/{user}', [PerformanceController::class, 'show'])
+            ->name('performance.members.show')
+            ->withTrashed(); // a departed member's history stays reachable
+
+        // Competency catalog — org-level leads only (admin, CTO, tech lead).
+        Route::middleware('can:manage-competencies')->group(function () {
+            Route::get('performance/competencies', [PerformanceCompetencyController::class, 'index'])->name('performance.competencies.index');
+            Route::get('performance/competencies/create', [PerformanceCompetencyController::class, 'create'])->name('performance.competencies.create');
+            Route::post('performance/competencies', [PerformanceCompetencyController::class, 'store'])->name('performance.competencies.store');
+            Route::get('performance/competencies/{competency}/edit', [PerformanceCompetencyController::class, 'edit'])->name('performance.competencies.edit');
+            Route::put('performance/competencies/{competency}', [PerformanceCompetencyController::class, 'update'])->name('performance.competencies.update');
+            Route::post('performance/competencies/{competency}/toggle', [PerformanceCompetencyController::class, 'toggle'])->name('performance.competencies.toggle');
+            Route::delete('performance/competencies/{competency}', [PerformanceCompetencyController::class, 'destroy'])->name('performance.competencies.destroy');
+        });
+    });
 
     /*
      | User management — the leadership tier.

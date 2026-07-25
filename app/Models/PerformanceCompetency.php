@@ -29,8 +29,11 @@ class PerformanceCompetency extends Model
     }
 
     public const CATEGORY_BEHAVIORAL = 'behavioral';
+
     public const CATEGORY_TECHNICAL = 'technical';
+
     public const CATEGORY_DELIVERY = 'delivery';
+
     public const CATEGORY_GROWTH = 'growth';
 
     /** @var array<string, string> */
@@ -42,7 +45,9 @@ class PerformanceCompetency extends Model
     ];
 
     public const SCOPE_DEVELOPER = 'developer';
+
     public const SCOPE_QA = 'qa';
+
     public const SCOPE_BOTH = 'both';
 
     /** @var array<string, string> */
@@ -53,6 +58,7 @@ class PerformanceCompetency extends Model
     ];
 
     public const CADENCE_DAILY = 'daily';
+
     public const CADENCE_WEEKLY = 'weekly';
 
     /** @var array<string, string> */
