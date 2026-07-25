@@ -75,6 +75,16 @@ class User extends Authenticatable
         ];
     }
 
+    protected static function booted(): void
+    {
+        // Vacate any team this user leads on delete. Users are soft-deleted, so
+        // the team_lead_id FK's nullOnDelete never fires — clear it here so it
+        // never points at a departed lead, whatever triggered the delete.
+        static::deleting(function (User $user) {
+            Team::where('team_lead_id', $user->id)->update(['team_lead_id' => null]);
+        });
+    }
+
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;

@@ -62,12 +62,15 @@
                                     <td class="whitespace-nowrap px-3 py-3">
                                         <a href="{{ route('tasksheet.index', ['team' => $entry->team_id, 'date' => $entry->date->toDateString()]) }}"
                                            class="font-medium text-slate-800 hover:text-brand-700">{{ $entry->date->format('D, M j, Y') }}</a>
+                                        @if ($entry->isHalfDay())
+                                            <div class="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">Half day</div>
+                                        @endif
                                         @if ($entry->wasFilledLate())
                                             <div class="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">Not added on the operating day</div>
                                         @endif
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-3 text-slate-600">{{ $entry->team->name ?? '—' }}</td>
-                                    @if ($entry->isOnLeave())
+                                    @if ($entry->isFullDayLeave())
                                         <td colspan="7" class="px-3 py-3">
                                             <span class="inline-flex rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">{{ $entry->leaveLabel() }}</span>
                                         </td>

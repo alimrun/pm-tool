@@ -56,3 +56,10 @@
 - [x] 9.2 `tasksheet/user.blade.php`: filter bar, per-date rows (rich cells, leave badge, late hint), date links to the team sheet, lead-only feedback column; linked from grid member names and the member dashboard "History →"
 - [x] 9.3 Feature tests: lead filtered view, self view (no feedback), other member 403, deleted member's history reachable
 - [x] 9.4 Users list (admin/CTO): per-row "Tasksheet history" action for developer/QA users
+
+## 10. Revision: half-day leave
+
+- [x] 10.1 `TasksheetEntry`: add `half_day` to `LEAVE_TYPES`, `FULL_DAY_LEAVE_TYPES` const, `isHalfDay()`/`isFullDayLeave()`; fill-status helpers gate on `isFullDayLeave()`
+- [x] 10.2 Controller clears task fields only for full-day leaves (half-day keeps them)
+- [x] 10.3 Grid row, history view, member dashboard: full-day → leave badge; half-day → task cells + "Half day" chip; edit-form hint updated
+- [x] 10.4 Feature tests: half-day keeps tasks + counts as filled/partial; casual/sick still clears; half_day accepted, invalid rejected

@@ -128,7 +128,7 @@ class UserController extends Controller
         $user->teams->each(
             fn ($team) => $team->memberRecords()->updateExistingPivot($user->id, ['left_at' => now()])
         );
-        $user->delete();
+        $user->delete(); // model's deleting hook also vacates any team they lead
 
         return redirect()->route('users.index')
             ->with('success', "User “{$name}” deleted.");

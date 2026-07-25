@@ -16,13 +16,16 @@
                 <span class="font-medium text-slate-800">{{ $rowUser->name }}</span>@include('partials.user-tag', ['tagUser' => $rowUser])
             @endif
             <div class="text-xs text-slate-400">{{ $rowUser->roleLabel() }}</div>
+            @if ($entry?->isHalfDay())
+                <div class="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700">Half day</div>
+            @endif
             @if ($entry?->wasFilledLate())
                 <div class="mt-1 inline-flex rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-medium text-amber-700"
                      title="This row was filled in after the day had passed">Not added on the operating day</div>
             @endif
         </td>
 
-        @if ($entry && $entry->isOnLeave())
+        @if ($entry && $entry->isFullDayLeave())
             <td colspan="{{ $taskCols }}" class="px-3 py-3">
                 <span class="inline-flex rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">{{ $entry->leaveLabel() }}</span>
             </td>
@@ -71,7 +74,7 @@
                                 <option value="{{ $val }}" @selected($entry?->leave_type === $val)>{{ $label }}</option>
                             @endforeach
                         </select>
-                        <span class="text-xs text-slate-400">Choosing a leave clears the day's task fields.</span>
+                        <span class="text-xs text-slate-400">A full-day leave clears the day's tasks; half day keeps them.</span>
                     </div>
 
                     <div class="grid gap-3 sm:grid-cols-2">

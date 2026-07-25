@@ -141,6 +141,28 @@ class TeamTasksheetTest extends TestCase
             ->assertOk()->assertSee('Sick leave');
     }
 
+    public function test_half_day_leave_keeps_tasks_and_counts_toward_fill_status(): void
+    {
+        $team = $this->team();
+        $dev = $this->member($team);
+
+        // Half day + a task plan: leave is stored, the plan survives.
+        $this->actingAs($dev)->put(route('tasksheet.entries.upsert'), $this->payload($team, $dev, [
+            'leave_type' => 'half_day', 'plan' => 'Half day of work',
+        ]))->assertRedirect();
+
+        $entry = TasksheetEntry::first();
+        $this->assertSame('half_day', $entry->leave_type);
+        $this->assertNotNull($entry->plan);
+        $this->assertTrue($entry->isHalfDay());
+        $this->assertFalse($entry->isFullDayLeave());
+        $this->assertTrue($entry->isPartiallyFilled()); // tasks still count
+
+        // The sheet shows the plan alongside a "Half day" marker (not a full leave badge).
+        $this->actingAs($dev)->get(route('tasksheet.index', ['team' => $team->id]))
+            ->assertOk()->assertSee('Half day of work')->assertSee('Half day');
+    }
+
     public function test_invalid_leave_type_and_negative_points_are_rejected(): void
     {
         $team = $this->team();
