@@ -370,6 +370,19 @@ class PerformanceEvaluationTest extends TestCase
         $this->assertTrue(PerformanceCompetency::where('role_scope', 'qa')->exists());
     }
 
+    public function test_evaluation_grid_renders_with_members_but_no_scores(): void
+    {
+        $lead = User::factory()->create(['role' => User::ROLE_TEAM_LEAD]);
+        $team = $this->team($lead);
+        $dev = $this->member($team);
+        $this->weeklyComp();
+
+        // No scores exist for this team/period — the grid must still render.
+        $this->actingAs($lead)->get(route('performance.evaluate', ['team' => $team->id, 'cadence' => 'weekly']))
+            ->assertOk()
+            ->assertSee($dev->name);
+    }
+
     public function test_all_performance_pages_render(): void
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);

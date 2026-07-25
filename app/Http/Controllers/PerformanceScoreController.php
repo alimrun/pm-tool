@@ -54,11 +54,12 @@ class PerformanceScoreController extends Controller
                 ->active()
                 ->get();
 
-            // Anyone already scored this period keeps their row (former members).
-            $scoredUserIds = $scores->map(fn (PerformanceScore $s) => $s->user_id)->unique();
-            $extra = $scoredUserIds->diff($members->pluck('id'))->isEmpty()
+            // Anyone already scored this period keeps their row (former members) —
+            // load only those not already among the current members.
+            $scoredUserIds = $scores->pluck('user_id')->unique()->all();
+            $extra = empty($scoredUserIds)
                 ? collect()
-                : User::whereIn('id', $scoredUserIds)->get();
+                : User::whereIn('id', $scoredUserIds)->whereNotIn('id', $members->pluck('id')->all())->get();
 
             $rowUsers = $members->concat($extra)->unique('id')->sortBy('name')->values();
 
