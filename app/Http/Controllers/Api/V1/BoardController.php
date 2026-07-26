@@ -6,36 +6,35 @@ use App\Http\Requests\Api\V1\MoveTaskRequest;
 use App\Http\Resources\V1\TaskResource;
 use App\Models\Release;
 use App\Models\Task;
+use App\Services\BoardService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\Rule;
 
 /**
  * The kanban board.
  *
- * Every status column is present in the payload even when it holds no cards —
- * a client must be able to render an empty column as a drop target, and
- * inferring the column set from the cards that happen to exist would make
- * empty columns disappear.
+ * The grouping and the move-plus-reorder transaction live in BoardService,
+ * shared with the Blade board. This layer adds the per-column label, color, and
+ * count that a JSON client needs but Blade reads from `Task::STATUSES` itself.
  */
 class BoardController extends ApiController
 {
+    public function __construct(private readonly BoardService $board) {}
+
     public function index(Request $request): JsonResponse
     {
-        $tasks = Task::query()
-            ->whereNull('parent_id') // top-level tasks are the cards
-            ->with(['release.project', 'assignee', 'subtasks'])
-            ->withCount('comments')
-            ->when($this->filterId($request, 'release_id'), fn ($q, $id) => $q->where('release_id', $id))
-            ->when($this->filterId($request, 'assignee_id'), fn ($q, $id) => $q->where('assignee_id', $id))
-            ->orderBy('position')
-            ->orderBy('id')
-            ->get();
+        $releaseId = $this->filterId($request, 'release_id');
+        $assigneeId = $this->filterId($request, 'assignee_id');
+
+        $grouped = $this->board->columns([
+            'release_id' => $releaseId,
+            'assignee_id' => $assigneeId,
+        ]);
 
         $columns = [];
         foreach (Task::STATUSES as $status => $label) {
-            $cards = $tasks->where('status', $status)->values();
+            $cards = $grouped[$status];
 
             $columns[] = [
                 'status' => $status,
@@ -49,8 +48,8 @@ class BoardController extends ApiController
         return $this->ok([
             'columns' => $columns,
             'filters' => [
-                'release_id' => $this->filterId($request, 'release_id'),
-                'assignee_id' => $this->filterId($request, 'assignee_id'),
+                'release_id' => $releaseId,
+                'assignee_id' => $assigneeId,
             ],
         ]);
     }
@@ -64,15 +63,12 @@ class BoardController extends ApiController
             'status' => ['required', Rule::in(array_keys(Task::STATUSES))],
         ]);
 
-        $release = Release::findOrFail($data['release_id']);
-
-        $task = $release->tasks()->create([
-            'title' => $data['title'],
-            'status' => $data['status'],
-            'parent_id' => null,
-            'created_by' => $request->user()->id,
-            'position' => $release->rootTasks()->count(),
-        ]);
+        $task = $this->board->quickAdd(
+            Release::findOrFail($data['release_id']),
+            $data['title'],
+            $data['status'],
+            $request->user(),
+        );
 
         return $this->created(
             new TaskResource($task->load(['release.project', 'assignee'])->loadCount('comments')),
@@ -80,19 +76,14 @@ class BoardController extends ApiController
         );
     }
 
-    /**
-     * A drag: set the card's status and renumber the target column in one
-     * transaction, so the board can never be observed half-moved.
-     */
+    /** A drag: status change and column reorder in one atomic step. */
     public function move(MoveTaskRequest $request, Task $task): JsonResponse
     {
-        DB::transaction(function () use ($request, $task) {
-            $task->update(['status' => $request->string('status')->toString()]);
-
-            foreach ($request->input('ordered_ids', []) as $index => $id) {
-                Task::whereKey($id)->whereNull('parent_id')->update(['position' => $index]);
-            }
-        });
+        $this->board->move(
+            $task,
+            $request->string('status')->toString(),
+            $request->input('ordered_ids', []),
+        );
 
         return $this->ok(
             new TaskResource($task->fresh()->load(['release.project', 'assignee'])->loadCount('comments')),

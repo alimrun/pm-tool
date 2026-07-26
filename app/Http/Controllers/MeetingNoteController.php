@@ -7,39 +7,26 @@ use App\Models\Event;
 use App\Models\MeetingNote;
 use App\Models\Release;
 use App\Models\User;
+use App\Services\MeetingNoteService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 class MeetingNoteController extends Controller
 {
+    public function __construct(private readonly MeetingNoteService $meetingNotes) {}
+
     public function index(): View
     {
         $filter = request('release'); // null (all) | 'general' | release id
-
-        // Optional meeting-date span; a reversed span is swapped, not rejected.
-        $from = ($f = request('from')) ? Carbon::parse($f)->toDateString() : null;
-        $to = ($t = request('to')) ? Carbon::parse($t)->toDateString() : null;
-        if ($from && $to && $from > $to) {
-            [$from, $to] = [$to, $from];
-        }
-
-        $notes = MeetingNote::with(['author', 'release'])
-            ->withCount('attendees')
-            ->visibleTo(request()->user())
-            ->when($filter === 'general', fn ($q) => $q->general())
-            ->when($filter && $filter !== 'general', fn ($q) => $q->forRelease((int) $filter))
-            ->when($from, fn ($q) => $q->whereDate('meeting_date', '>=', $from))
-            ->when($to, fn ($q) => $q->whereDate('meeting_date', '<=', $to))
-            ->orderByDesc('meeting_date')
-            ->orderByDesc('id')
-            ->get();
+        $range = $this->meetingNotes->normalizeRange(request()->only(['from', 'to']));
 
         return view('meeting-notes.index', [
-            'notes' => $notes,
+            'notes' => $this->meetingNotes
+                ->visibleTo(request()->user(), ['release' => $filter, ...$range])
+                ->get(),
             'filter' => $filter,
-            'from' => $from,
-            'to' => $to,
+            'from' => $range['from'],
+            'to' => $range['to'],
             'releases' => Release::orderBy('year', 'desc')->orderBy('name')->get(),
         ]);
     }
@@ -66,11 +53,11 @@ class MeetingNoteController extends Controller
 
     public function store(MeetingNoteRequest $request): RedirectResponse
     {
-        $note = MeetingNote::create($request->safe()->merge([
-            'created_by' => $request->user()->id,
-        ])->only(['title', 'meeting_date', 'release_id', 'event_id', 'body', 'visibility', 'created_by']));
-
-        $note->attendees()->sync($request->validated('attendees') ?? []);
+        $note = $this->meetingNotes->create(
+            $request->validated(),
+            $request->validated('attendees') ?? [],
+            $request->user(),
+        );
 
         return redirect()->route('meeting-notes.show', $note)->with('success', 'Meeting note created.');
     }
@@ -88,15 +75,11 @@ class MeetingNoteController extends Controller
     {
         $this->authorize('update', $meetingNote);
 
-        // Ongoing releases, plus the note's own release even if it has since
-        // completed — so editing never silently drops an existing link.
-        $releases = Release::query()
-            ->where(fn ($q) => $q->whereNull('completed_at')->orWhere('id', $meetingNote->release_id))
-            ->orderBy('year', 'desc')->orderBy('name')->get();
-
         return view('meeting-notes.edit', [
             'meetingNote' => $meetingNote,
-            'releases' => $releases,
+            // Ongoing releases, plus this note's own even if it has since
+            // completed — so editing never silently drops an existing link.
+            'releases' => $this->meetingNotes->linkableReleases($meetingNote),
             'users' => User::active()->orderBy('name')->get(),
             'selectedAttendees' => $meetingNote->attendees()->pluck('users.id')->all(),
         ]);
@@ -106,10 +89,14 @@ class MeetingNoteController extends Controller
     {
         $this->authorize('update', $meetingNote);
 
-        $meetingNote->update($request->safe()->only(['title', 'meeting_date', 'release_id', 'event_id', 'body', 'visibility']));
-        $meetingNote->attendees()->sync($request->validated('attendees') ?? []);
+        $this->meetingNotes->update(
+            $meetingNote,
+            $request->validated(),
+            $request->validated('attendees') ?? [],
+        );
 
-        return redirect()->route('meeting-notes.show', $meetingNote)->with('success', 'Meeting note updated.');
+        return redirect()->route('meeting-notes.show', $meetingNote)
+            ->with('success', 'Meeting note updated.');
     }
 
     public function destroy(MeetingNote $meetingNote): RedirectResponse

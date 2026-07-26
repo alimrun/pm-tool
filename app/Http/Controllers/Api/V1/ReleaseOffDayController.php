@@ -6,55 +6,38 @@ use App\Http\Requests\ReleaseOffDayRequest;
 use App\Http\Resources\V1\ReleaseOffDayResource;
 use App\Models\Release;
 use App\Models\ReleaseOffDay;
+use App\Services\ReleaseOffDayService;
 use Illuminate\Http\JsonResponse;
 
 class ReleaseOffDayController extends ApiController
 {
+    public function __construct(private readonly ReleaseOffDayService $offDays) {}
+
     public function index(Release $release): JsonResponse
     {
-        return $this->ok(ReleaseOffDayResource::collection($release->offDays()->get()));
+        return $this->ok(ReleaseOffDayResource::collection($this->offDays->forRelease($release)));
     }
 
     public function store(ReleaseOffDayRequest $request, Release $release): JsonResponse
     {
-        $offDay = $release->offDays()->create($request->validated());
+        $offDay = $this->offDays->add($release, $request->validated());
 
         return $this->created(new ReleaseOffDayResource($offDay), 'Off-day marked.');
     }
 
-    /** Mark every Saturday and Sunday in the window that is not already off. */
     public function markWeekends(Release $release): JsonResponse
     {
-        $existing = $release->offDays()->get()
-            ->map(fn (ReleaseOffDay $o) => $o->date->toDateString())
-            ->all();
-
-        $added = 0;
-        $cursor = $release->start_date->copy();
-
-        while ($cursor->lte($release->end_date)) {
-            if ($cursor->isWeekend() && ! in_array($cursor->toDateString(), $existing, true)) {
-                $release->offDays()->create([
-                    'date' => $cursor->toDateString(),
-                    'reason' => 'Weekend',
-                ]);
-                $added++;
-            }
-
-            $cursor->addDay();
-        }
+        $added = $this->offDays->markWeekends($release);
 
         return $this->ok(
-            ReleaseOffDayResource::collection($release->offDays()->get()),
+            ReleaseOffDayResource::collection($this->offDays->forRelease($release)),
             $added ? "Marked {$added} weekend day(s) as off." : 'All weekends were already marked.'
         );
     }
 
     public function destroy(Release $release, ReleaseOffDay $offDay): JsonResponse
     {
-        abort_unless($offDay->release_id === $release->id, 404);
-
-        $offDay->delete();
+        $this->offDays->remove($release, $offDay);
 
         return $this->message('Off-day removed.');
     }

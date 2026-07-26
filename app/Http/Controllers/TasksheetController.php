@@ -3,89 +3,35 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\TasksheetEntryRequest;
-use App\Models\TasksheetEntry;
-use App\Models\Team;
 use App\Models\User;
+use App\Services\TasksheetService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Carbon;
 use Illuminate\View\View;
 
 class TasksheetController extends Controller
 {
+    public function __construct(private readonly TasksheetService $tasksheet) {}
+
     public function index(): View
     {
         $viewer = request()->user();
 
-        // Viewer's teams first, then the other active teams.
-        $myTeamIds = $viewer->teams()->pluck('teams.id');
-        $teams = Team::active()->orderBy('name')->get()
-            ->sortBy(fn (Team $t) => [$myTeamIds->contains($t->id) ? 0 : 1, $t->name])
-            ->values();
-
-        $team = null;
-        if ($teamId = request()->integer('team')) {
-            $team = $teams->firstWhere('id', $teamId);
-        }
-        $team ??= $teams->first();
+        $teams = $this->tasksheet->teamsFor($viewer);
+        $team = $this->tasksheet->resolveTeam($teams, request()->integer('team') ?: null);
 
         $day = ($d = request('date')) ? Carbon::parse($d)->startOfDay() : today();
-        $isPast = $day->lt(today());
 
-        $rowUsers = collect();
         $entries = collect();
-
+        $rowUsers = collect();
         $viewerIsMember = false;
-
-        if ($team) {
-            $entries = TasksheetEntry::with('member')
-                ->where('team_id', $team->id)
-                ->whereDate('date', $day->toDateString())
-                ->get()
-                ->keyBy('user_id');
-
-            // Rows: dev/QA whose membership covers the viewed date — current
-            // members, plus people who left / were deleted / were deactivated
-            // on or after that date (their history, including auto-absent
-            // days, stays visible) — ∪ anyone with a saved entry that day.
-            $dayStr = $day->toDateString();
-            $members = $team->memberRecords()
-                ->withTrashed()
-                ->whereIn('role', [User::ROLE_DEVELOPER, User::ROLE_QA])
-                ->get()
-                ->filter(fn (User $u) => ($u->pivot->left_at === null || Carbon::parse($u->pivot->left_at)->toDateString() >= $dayStr)
-                    && ($u->deleted_at === null || $u->deleted_at->toDateString() >= $dayStr)
-                    && ($u->deactivated_at === null || $u->deactivated_at->toDateString() >= $dayStr));
-
-            $rowUsers = $members
-                ->concat($entries->map(fn (TasksheetEntry $e) => $e->member)->filter())
-                ->unique('id')
-                ->sortBy('name')
-                ->values();
-
-            $viewerIsMember = $team->members()->whereKey($viewer->id)->exists();
-        }
-
-        // Team output for the trailing 14 days (ending on the viewed day): total
-        // work points booked per calendar day, for the productivity chart.
         $trend = [];
-        if ($team) {
-            $windowStart = $day->copy()->subDays(13);
-            $byDay = TasksheetEntry::where('team_id', $team->id)
-                ->whereBetween('date', [$windowStart->toDateString(), $day->toDateString()])
-                ->selectRaw('date, COALESCE(SUM(work_points), 0) as wp')
-                ->groupBy('date')
-                ->get()
-                ->mapWithKeys(fn ($r) => [Carbon::parse($r->date)->toDateString() => (int) $r->wp]);
 
-            for ($i = 13; $i >= 0; $i--) {
-                $d = $day->copy()->subDays($i);
-                $trend[] = [
-                    'label' => $d->format('j'),
-                    'dow' => $d->format('D'),
-                    'wp' => $byDay[$d->toDateString()] ?? 0,
-                    'current' => $d->isSameDay($day),
-                ];
-            }
+        if ($team) {
+            $entries = $this->tasksheet->entriesFor($team, $day);
+            $rowUsers = $this->tasksheet->rowUsersFor($team, $day, $entries);
+            $viewerIsMember = $team->members()->whereKey($viewer->id)->exists();
+            $trend = $this->tasksheet->trend($team, $day);
         }
 
         return view('tasksheet.index', [
@@ -95,7 +41,7 @@ class TasksheetController extends Controller
             'prev' => $day->copy()->subDay(),
             'next' => $day->copy()->addDay(),
             'isToday' => $day->isToday(),
-            'isPast' => $isPast,
+            'isPast' => $day->lt(today()),
             'rowUsers' => $rowUsers,
             'entries' => $entries,
             'viewerIsMember' => $viewerIsMember,
@@ -112,24 +58,15 @@ class TasksheetController extends Controller
         $teamFilter = request()->integer('team') ?: null;
         $from = ($f = request('from')) ? Carbon::parse($f)->toDateString() : null;
         $to = ($t = request('to')) ? Carbon::parse($t)->toDateString() : null;
+
         if ($from && $to && $from > $to) {
             [$from, $to] = [$to, $from];
         }
 
-        $entries = TasksheetEntry::with('team')
-            ->where('user_id', $member->id)
-            ->when($teamFilter, fn ($q) => $q->where('team_id', $teamFilter))
-            ->when($from, fn ($q) => $q->whereDate('date', '>=', $from))
-            ->when($to, fn ($q) => $q->whereDate('date', '<=', $to))
-            ->orderByDesc('date')
-            ->orderByDesc('id')
-            ->get();
-
         return view('tasksheet.user', [
             'member' => $member,
-            'entries' => $entries,
-            'teams' => Team::whereIn('id', TasksheetEntry::where('user_id', $member->id)->select('team_id'))
-                ->orderBy('name')->get(),
+            'entries' => $this->tasksheet->history($member, $teamFilter, $from, $to)->get(),
+            'teams' => $this->tasksheet->teamsWithHistory($member),
             'teamFilter' => $teamFilter,
             'from' => $from,
             'to' => $to,
@@ -139,46 +76,15 @@ class TasksheetController extends Controller
     public function upsert(TasksheetEntryRequest $request): RedirectResponse
     {
         $data = $request->validated();
-        $date = Carbon::parse($data['date'])->toDateString();
 
-        // whereDate, not firstOrNew: the date cast stores a midnight timestamp,
-        // so a raw where('date', 'Y-m-d') misses the row on some drivers.
-        $entry = TasksheetEntry::where('team_id', $data['team_id'])
-            ->where('user_id', $data['user_id'])
-            ->whereDate('date', $date)
-            ->first() ?? new TasksheetEntry([
-                'team_id' => $data['team_id'],
-                'user_id' => $data['user_id'],
-                'date' => $date,
-            ]);
-
+        $entry = $this->tasksheet->resolveEntry($data);
         $this->authorize('update', $entry);
 
-        $fields = collect($data)->only([
-            'plan', 'result', 'comment', 'tickets', 'work_points', 'ticket_count', 'ticket_points', 'leave_type',
-        ])->all();
-
-        // A full-day-absent member has no task content — that leave clears the
-        // row. Half-day leave keeps the tasks: the member still works part-day.
-        if (in_array($fields['leave_type'] ?? null, TasksheetEntry::FULL_DAY_LEAVE_TYPES, true)) {
-            $fields = ['leave_type' => $fields['leave_type']] + array_fill_keys(
-                ['plan', 'result', 'comment', 'tickets', 'work_points', 'ticket_count', 'ticket_points'], null
-            );
-        }
-
-        $entry->fill($fields);
-
-        // Feedback is written exclusively by leads; a member's save never
-        // touches it (so it can't be blanked or forged).
-        if ($request->user()->isLead() && $request->has('feedback')) {
-            $entry->feedback = $data['feedback'] ?? null;
-        }
-
-        $entry->save();
+        $this->tasksheet->save($entry, $data, $request->user(), $request->has('feedback'));
 
         return redirect()->route('tasksheet.index', [
             'team' => $entry->team_id,
-            'date' => $date,
+            'date' => $entry->date->toDateString(),
         ])->with('success', 'Tasksheet saved.');
     }
 }

@@ -4,8 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\PerformanceCompetencyRequest;
 use App\Models\PerformanceCompetency;
+use App\Services\PerformanceCompetencyService;
 use Illuminate\Http\RedirectResponse;
-use Illuminate\Support\Str;
 use Illuminate\View\View;
 
 /**
@@ -14,10 +14,12 @@ use Illuminate\View\View;
  */
 class PerformanceCompetencyController extends Controller
 {
+    public function __construct(private readonly PerformanceCompetencyService $competencies) {}
+
     public function index(): View
     {
         return view('performance.competencies.index', [
-            'competencies' => PerformanceCompetency::ordered()->withCount('scores')->get(),
+            'competencies' => $this->competencies->catalog()->get(),
             'categories' => PerformanceCompetency::CATEGORIES,
         ]);
     }
@@ -37,11 +39,7 @@ class PerformanceCompetencyController extends Controller
 
     public function store(PerformanceCompetencyRequest $request): RedirectResponse
     {
-        $data = $request->validated();
-        $data['key'] = $this->uniqueKey($data['name']);
-        $data['position'] ??= (int) PerformanceCompetency::max('position') + 1;
-
-        PerformanceCompetency::create($data);
+        $this->competencies->create($request->validated());
 
         return redirect()->route('performance.competencies.index')
             ->with('success', 'Competency added.');
@@ -54,8 +52,7 @@ class PerformanceCompetencyController extends Controller
 
     public function update(PerformanceCompetencyRequest $request, PerformanceCompetency $competency): RedirectResponse
     {
-        // `key` is immutable — it anchors historical scores.
-        $competency->update($request->validated());
+        $this->competencies->update($competency, $request->validated());
 
         return redirect()->route('performance.competencies.index')
             ->with('success', 'Competency updated.');
@@ -64,7 +61,7 @@ class PerformanceCompetencyController extends Controller
     /** Flip active/inactive — the safe way to retire a scored competency. */
     public function toggle(PerformanceCompetency $competency): RedirectResponse
     {
-        $competency->update(['active' => ! $competency->active]);
+        $this->competencies->toggle($competency);
 
         return redirect()->route('performance.competencies.index')
             ->with('success', $competency->active ? 'Competency activated.' : 'Competency deactivated.');
@@ -72,8 +69,8 @@ class PerformanceCompetencyController extends Controller
 
     public function destroy(PerformanceCompetency $competency): RedirectResponse
     {
-        // Preserve history: a scored competency can only be deactivated, not deleted.
-        if ($competency->scores()->exists()) {
+        // Preserve history: a scored competency can only be deactivated.
+        if (! $this->competencies->isDeletable($competency)) {
             return redirect()->route('performance.competencies.index')
                 ->with('error', 'This competency has recorded scores — deactivate it instead of deleting.');
         }
@@ -82,18 +79,5 @@ class PerformanceCompetencyController extends Controller
 
         return redirect()->route('performance.competencies.index')
             ->with('success', 'Competency deleted.');
-    }
-
-    /** A URL-safe, unique key derived from the name. */
-    private function uniqueKey(string $name): string
-    {
-        $base = Str::slug($name) ?: 'competency';
-        $key = $base;
-        $i = 2;
-        while (PerformanceCompetency::where('key', $key)->exists()) {
-            $key = $base.'-'.$i++;
-        }
-
-        return $key;
     }
 }

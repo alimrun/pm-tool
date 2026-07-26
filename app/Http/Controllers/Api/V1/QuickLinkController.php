@@ -5,42 +5,38 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Requests\QuickLinkRequest;
 use App\Http\Resources\V1\QuickLinkResource;
 use App\Models\QuickLink;
+use App\Services\QuickLinkService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 /**
- * Saved bookmarks. Like personal notes, a quick link belongs to its author —
- * QuickLinkPolicy lets nobody else edit or delete one, leads included.
+ * Saved bookmarks. A quick link belongs to its author — QuickLinkPolicy lets
+ * nobody else edit or delete one, leads included.
  */
 class QuickLinkController extends ApiController
 {
+    public function __construct(private readonly QuickLinkService $quickLinks) {}
+
     /**
-     * The caller's visible links, partitioned into their own and everyone
-     * else's shared ones — the split the drawer renders, done once on the
-     * server so two clients cannot disagree about which bucket a link is in.
+     * The caller's visible links, split into their own and everyone else's
+     * shared ones — the same partition the web drawer renders.
      */
     public function index(Request $request): JsonResponse
     {
-        $links = QuickLink::with(['author', 'release'])
-            ->visibleTo($request->user())
-            ->when($this->filterId($request, 'release_id'), fn ($q, $id) => $q->where('release_id', $id))
-            ->orderByDesc('id')
-            ->get();
-
-        [$mine, $shared] = $links->partition(fn (QuickLink $l) => $l->user_id === $request->user()->id);
+        $partitioned = $this->quickLinks->partitionedFor(
+            $request->user(),
+            $this->filterId($request, 'release_id'),
+        );
 
         return $this->ok([
-            'mine' => QuickLinkResource::collection($mine->values())->resolve($request),
-            'shared' => QuickLinkResource::collection($shared->values())->resolve($request),
+            'mine' => QuickLinkResource::collection($partitioned['mine'])->resolve($request),
+            'shared' => QuickLinkResource::collection($partitioned['shared'])->resolve($request),
         ]);
     }
 
     public function store(QuickLinkRequest $request): JsonResponse
     {
-        $link = QuickLink::create($request->safe()->merge([
-            'user_id' => $request->user()->id,
-            'visibility' => $request->validated('visibility') ?? QuickLink::VISIBILITY_PRIVATE,
-        ])->only(['user_id', 'release_id', 'label', 'url', 'visibility']));
+        $link = $this->quickLinks->create($request->validated(), $request->user());
 
         return $this->created(new QuickLinkResource($link->load(['author', 'release'])), 'Link added.');
     }
@@ -49,9 +45,7 @@ class QuickLinkController extends ApiController
     {
         $this->authorize('update', $quickLink);
 
-        $quickLink->update($request->safe()->merge([
-            'visibility' => $request->validated('visibility') ?? $quickLink->visibility,
-        ])->only(['release_id', 'label', 'url', 'visibility']));
+        $this->quickLinks->update($quickLink, $request->validated());
 
         return $this->ok(new QuickLinkResource($quickLink->load(['author', 'release'])), 'Link updated.');
     }

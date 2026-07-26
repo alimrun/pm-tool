@@ -6,6 +6,7 @@ use App\Http\Requests\EventRequest;
 use App\Http\Resources\V1\EventResource;
 use App\Http\Resources\V1\MeetingNoteResource;
 use App\Models\Event;
+use App\Services\EventService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -13,17 +14,21 @@ use Illuminate\Support\Carbon;
 /**
  * Calendar events. Any signed-in user creates; EventPolicy limits editing and
  * deleting to the creator or a lead.
+ *
+ * The all-day normalization and the month-grid window live in EventService,
+ * shared with the Blade calendar — so a client drawing a month sees exactly the
+ * events the web calendar shows for the same month.
  */
 class EventController extends ApiController
 {
+    public function __construct(private readonly EventService $events) {}
+
     /**
      * Events overlapping a window.
      *
-     * The default window is the month grid a client would draw — the whole
-     * weeks spanning the month, not just its first-to-last day — so events
-     * that spill into the leading and trailing days are present rather than
-     * appearing to vanish at the grid edges. An explicit `from`/`to` overrides
-     * it.
+     * The default window is the month *grid* — the whole weeks spanning the
+     * month — so events spilling into the leading and trailing days are
+     * present. An explicit `from`/`to` overrides it.
      */
     public function index(Request $request): JsonResponse
     {
@@ -36,32 +41,22 @@ class EventController extends ApiController
 
         [$from, $to] = $this->window($request);
 
-        $events = Event::query()
-            ->with(['release', 'creator', 'attendees'])
-            ->whereDate('starts_at', '<=', $to->toDateString())
-            ->where(fn ($q) => $q
-                ->whereDate('ends_at', '>=', $from->toDateString())
-                ->orWhere(fn ($q2) => $q2
-                    ->whereNull('ends_at')
-                    ->whereDate('starts_at', '>=', $from->toDateString())))
-            ->when($this->filterId($request, 'release_id'), fn ($q, $id) => $q->where('release_id', $id))
-            ->when($request->filled('type'), fn ($q) => $q->where('type', $request->input('type')))
-            ->orderBy('starts_at')
-            ->get();
+        $events = $this->events->inWindow($from, $to, [
+            'release_id' => $this->filterId($request, 'release_id'),
+            'type' => $request->input('type'),
+        ]);
 
         // Y-m-d => [event ids], so a client can fill a month grid without
         // re-deriving which days each multi-day event covers.
-        $byDate = [];
-        foreach ($events as $event) {
-            foreach ($event->coveredDates($from, $to) as $date) {
-                $byDate[$date][] = $event->id;
-            }
-        }
+        $byDate = array_map(
+            fn (array $dayEvents) => array_map(fn (Event $e) => $e->id, $dayEvents),
+            $this->events->groupByDate($events, $from, $to),
+        );
 
         return $this->ok([
             'from' => $from->toDateString(),
             'to' => $to->toDateString(),
-            'events' => EventResource::collection($events)->resolve($request),
+            'events' => EventResource::collection($events->load('attendees'))->resolve($request),
             'events_by_date' => $byDate,
         ]);
     }
@@ -83,8 +78,11 @@ class EventController extends ApiController
 
     public function store(EventRequest $request): JsonResponse
     {
-        $event = Event::create($this->attributes($request) + ['created_by' => $request->user()->id]);
-        $event->attendees()->sync($request->validated('attendees') ?? []);
+        $event = $this->events->create(
+            $request->validated(),
+            $request->validated('attendees') ?? [],
+            $request->user(),
+        );
 
         return $this->created(
             new EventResource($event->load(['creator', 'release', 'attendees'])),
@@ -96,8 +94,7 @@ class EventController extends ApiController
     {
         $this->authorize('update', $event);
 
-        $event->update($this->attributes($request));
-        $event->attendees()->sync($request->validated('attendees') ?? []);
+        $this->events->update($event, $request->validated(), $request->validated('attendees') ?? []);
 
         return $this->ok(
             new EventResource($event->load(['creator', 'release', 'attendees'])),
@@ -115,8 +112,8 @@ class EventController extends ApiController
     }
 
     /**
-     * The query window: an explicit from/to, or the full weeks spanning the
-     * requested (default current) month.
+     * The query window: an explicit from/to, or the grid of the requested
+     * (default current) month.
      *
      * @return array{0: Carbon, 1: Carbon}
      */
@@ -129,39 +126,9 @@ class EventController extends ApiController
             return $from->gt($to) ? [$to, $from] : [$from, $to];
         }
 
-        $year = (int) $request->integer('year', (int) now()->year);
-        $month = min(max((int) $request->integer('month', (int) now()->month), 1), 12);
-        $first = Carbon::create($year, $month, 1)->startOfDay();
-
-        return [
-            $first->copy()->startOfWeek(Carbon::SUNDAY),
-            $first->copy()->endOfMonth()->endOfWeek(Carbon::SATURDAY),
-        ];
-    }
-
-    /**
-     * Writable attributes, with an all-day event normalized to day bounds so
-     * "all day" means the same span however the client sent the times.
-     *
-     * @return array<string, mixed>
-     */
-    private function attributes(EventRequest $request): array
-    {
-        $data = $request->safe()->only([
-            'title', 'description', 'type', 'starts_at', 'ends_at', 'all_day', 'location', 'release_id',
-        ]);
-
-        $start = Carbon::parse($data['starts_at']);
-        $end = ! empty($data['ends_at']) ? Carbon::parse($data['ends_at']) : null;
-
-        if (! empty($data['all_day'])) {
-            $start = $start->startOfDay();
-            $end = ($end ?? $start)->endOfDay();
-        }
-
-        $data['starts_at'] = $start;
-        $data['ends_at'] = $end;
-
-        return $data;
+        return $this->events->monthWindow(
+            (int) $request->integer('year', (int) now()->year),
+            (int) $request->integer('month', (int) now()->month),
+        );
     }
 }

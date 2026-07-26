@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Requests\ProjectRequest;
 use App\Http\Resources\V1\ProjectResource;
 use App\Models\Project;
+use App\Services\ProjectService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -15,16 +16,14 @@ use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
  */
 class ProjectController extends ApiController
 {
-    /** Active projects first, then archived — matching the web ordering. */
+    public function __construct(private readonly ProjectService $projects) {}
+
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Project::withCount('releases')
-            ->when($request->filled('status'), fn ($q) => $request->input('status') === 'archived'
-                ? $q->whereNotNull('archived_at')
-                : $q->whereNull('archived_at'))
-            ->when($request->filled('search'), fn ($q) => $q->where('name', 'like', '%'.$request->string('search')->toString().'%'))
-            ->orderByRaw('archived_at is not null')
-            ->orderBy('name');
+        $query = $this->projects->filtered([
+            'status' => $request->input('status'),
+            'search' => $request->filled('search') ? $request->string('search')->toString() : null,
+        ]);
 
         return $this->paginate($request, $query, ProjectResource::class);
     }
@@ -56,13 +55,12 @@ class ProjectController extends ApiController
 
     /**
      * A project that owns releases is never hard-deleted — deleting it would
-     * cascade away release history. It is archived instead, exactly as the web
-     * app refuses and directs.
+     * cascade away release history. It is archived instead.
      */
     public function destroy(Project $project): JsonResponse
     {
         abort_if(
-            $project->releases()->exists(),
+            ! $this->projects->isDeletable($project),
             422,
             'This project has releases and cannot be deleted. Archive it instead.'
         );
@@ -75,14 +73,14 @@ class ProjectController extends ApiController
 
     public function archive(Project $project): JsonResponse
     {
-        $project->update(['archived_at' => now()]);
+        $this->projects->archive($project);
 
         return $this->ok(new ProjectResource($project), "Project “{$project->name}” archived.");
     }
 
     public function restore(Project $project): JsonResponse
     {
-        $project->update(['archived_at' => null]);
+        $this->projects->restore($project);
 
         return $this->ok(new ProjectResource($project), "Project “{$project->name}” restored.");
     }

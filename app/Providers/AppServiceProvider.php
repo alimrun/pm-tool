@@ -2,9 +2,8 @@
 
 namespace App\Providers;
 
-use App\Models\QuickLink;
-use App\Models\Release;
 use App\Models\User;
+use App\Services\QuickLinkService;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,21 +34,17 @@ class AppServiceProvider extends ServiceProvider
         $this->configureRateLimiting();
 
         // The quick-links drawer renders on every page; a composer supplies its
-        // data so individual controllers never have to.
+        // data so individual controllers never have to. The visible-links query
+        // and the own/shared split come from QuickLinkService, shared with the
+        // API, so the drawer and the desktop client cannot disagree.
         View::composer('partials.quick-links-drawer', function ($view) {
-            $user = Auth::user();
-
-            $links = QuickLink::with(['author', 'release'])
-                ->visibleTo($user)
-                ->orderByDesc('id')
-                ->get();
-
-            [$mine, $shared] = $links->partition(fn (QuickLink $l) => $l->user_id === $user->id);
+            $quickLinks = app(QuickLinkService::class);
+            $partitioned = $quickLinks->partitionedFor(Auth::user());
 
             $view->with([
-                'myQuickLinks' => $mine->values(),
-                'sharedQuickLinks' => $shared->values(),
-                'drawerReleases' => Release::ongoing()->orderBy('year', 'desc')->orderBy('name')->get(),
+                'myQuickLinks' => $partitioned['mine'],
+                'sharedQuickLinks' => $partitioned['shared'],
+                'drawerReleases' => $quickLinks->attachableReleases(),
             ]);
         });
     }

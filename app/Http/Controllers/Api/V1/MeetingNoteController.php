@@ -5,20 +5,22 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Requests\MeetingNoteRequest;
 use App\Http\Resources\V1\MeetingNoteResource;
 use App\Models\MeetingNote;
+use App\Services\MeetingNoteService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
-use Illuminate\Support\Carbon;
 
 /**
  * Meeting minutes — release-linked or general.
  *
- * Unlike personal notes, these are shared team records: a lead may delete any
- * of them (cleanup after someone leaves), but editing stays with the author.
- * Attendees-only notes are filtered at the query by `visibleTo()`.
+ * Filtering and the attendee sync live in MeetingNoteService, shared with the
+ * Blade pages. Unlike personal notes these are shared team records: a lead may
+ * delete any of them, while editing stays with the author.
  */
 class MeetingNoteController extends ApiController
 {
+    public function __construct(private readonly MeetingNoteService $meetingNotes) {}
+
     public function index(Request $request): AnonymousResourceCollection
     {
         $request->validate([
@@ -26,24 +28,12 @@ class MeetingNoteController extends ApiController
             'to' => ['nullable', 'date'],
         ]);
 
-        $filter = $request->input('release'); // null (all) | 'general' | release id
+        $range = $this->meetingNotes->normalizeRange($request->only(['from', 'to']));
 
-        $from = $request->filled('from') ? Carbon::parse($request->input('from'))->toDateString() : null;
-        $to = $request->filled('to') ? Carbon::parse($request->input('to'))->toDateString() : null;
-
-        if ($from && $to && $from > $to) {
-            [$from, $to] = [$to, $from];
-        }
-
-        $query = MeetingNote::with(['author', 'release'])
-            ->withCount('attendees')
-            ->visibleTo($request->user())
-            ->when($filter === 'general', fn ($q) => $q->general())
-            ->when($filter && $filter !== 'general', fn ($q) => $q->forRelease((int) $filter))
-            ->when($from, fn ($q) => $q->whereDate('meeting_date', '>=', $from))
-            ->when($to, fn ($q) => $q->whereDate('meeting_date', '<=', $to))
-            ->orderByDesc('meeting_date')
-            ->orderByDesc('id');
+        $query = $this->meetingNotes->visibleTo($request->user(), [
+            'release' => $request->input('release'), // null | 'general' | release id
+            ...$range,
+        ]);
 
         return $this->paginate($request, $query, MeetingNoteResource::class);
     }
@@ -59,11 +49,11 @@ class MeetingNoteController extends ApiController
 
     public function store(MeetingNoteRequest $request): JsonResponse
     {
-        $note = MeetingNote::create($request->safe()->merge([
-            'created_by' => $request->user()->id,
-        ])->only(['title', 'meeting_date', 'release_id', 'event_id', 'body', 'visibility', 'created_by']));
-
-        $note->attendees()->sync($request->validated('attendees') ?? []);
+        $note = $this->meetingNotes->create(
+            $request->validated(),
+            $request->validated('attendees') ?? [],
+            $request->user(),
+        );
 
         return $this->created(
             new MeetingNoteResource($note->load(['author', 'release', 'event', 'attendees'])),
@@ -75,11 +65,11 @@ class MeetingNoteController extends ApiController
     {
         $this->authorize('update', $meetingNote);
 
-        $meetingNote->update($request->safe()->only([
-            'title', 'meeting_date', 'release_id', 'event_id', 'body', 'visibility',
-        ]));
-
-        $meetingNote->attendees()->sync($request->validated('attendees') ?? []);
+        $this->meetingNotes->update(
+            $meetingNote,
+            $request->validated(),
+            $request->validated('attendees') ?? [],
+        );
 
         return $this->ok(
             new MeetingNoteResource($meetingNote->load(['author', 'release', 'event', 'attendees'])),

@@ -6,28 +6,27 @@ use App\Http\Requests\TasksheetEntryRequest;
 use App\Http\Resources\V1\TasksheetEntryResource;
 use App\Http\Resources\V1\TeamSummaryResource;
 use App\Http\Resources\V1\UserSummaryResource;
-use App\Models\TasksheetEntry;
-use App\Models\Team;
 use App\Models\User;
+use App\Services\TasksheetService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
 
 /**
  * The team's daily tasksheet.
  *
- * Two rules drive most of this file. First, history is immutable in shape: the
- * rows shown for a past date are the people whose membership *covered that
- * date*, including anyone since removed, deactivated, or deleted — otherwise a
- * departure would silently rewrite last month's sheet. Second, the `feedback`
- * column belongs to leads alone, on read (the resource omits it) and on write
- * (a member's save never touches it).
+ * The roster rule (who belongs on a given day's sheet), the output trend, and
+ * the lead-only `feedback` write all live in TasksheetService, shared with the
+ * Blade tasksheet. The resource omits `feedback` for a non-lead reader, and the
+ * service ignores it on a non-lead write — read and write are guarded
+ * independently, so neither alone is load-bearing.
  */
 class TasksheetController extends ApiController
 {
-    /** The day grid for one team: the member rows, their entries, and the output trend. */
+    public function __construct(private readonly TasksheetService $tasksheet) {}
+
+    /** The day grid for one team: member rows, their entries, and the trend. */
     public function index(Request $request): JsonResponse
     {
         $request->validate([
@@ -37,35 +36,23 @@ class TasksheetController extends ApiController
 
         $viewer = $request->user();
 
-        // The viewer's own teams first, then the rest.
-        $myTeamIds = $viewer->teams()->pluck('teams.id');
-        $teams = Team::active()->orderBy('name')->get()
-            ->sortBy(fn (Team $t) => [$myTeamIds->contains($t->id) ? 0 : 1, $t->name])
-            ->values();
-
-        $team = null;
-        if ($teamId = $this->filterId($request, 'team_id')) {
-            $team = $teams->firstWhere('id', $teamId);
-        }
-        $team ??= $teams->first();
+        $teams = $this->tasksheet->teamsFor($viewer);
+        $team = $this->tasksheet->resolveTeam($teams, $this->filterId($request, 'team_id'));
 
         $day = $request->filled('date')
             ? Carbon::parse($request->input('date'))->startOfDay()
             : today();
 
-        $rowUsers = collect();
         $entries = collect();
+        $rowUsers = collect();
         $viewerIsMember = false;
+        $trend = [];
 
         if ($team) {
-            $entries = TasksheetEntry::with('member')
-                ->where('team_id', $team->id)
-                ->whereDate('date', $day->toDateString())
-                ->get()
-                ->keyBy('user_id');
-
-            $rowUsers = $this->rowUsersFor($team, $day, $entries);
+            $entries = $this->tasksheet->entriesFor($team, $day);
+            $rowUsers = $this->tasksheet->rowUsersFor($team, $day, $entries);
             $viewerIsMember = $team->members()->whereKey($viewer->id)->exists();
+            $trend = $this->tasksheet->trend($team, $day);
         }
 
         return $this->ok([
@@ -78,11 +65,11 @@ class TasksheetController extends ApiController
             'can_write_feedback' => $viewer->isLead(),
             'rows' => $rowUsers->map(fn (User $u) => [
                 'user' => (new UserSummaryResource($u))->resolve($request),
-                'entry' => ($e = $entries->get($u->id))
-                    ? (new TasksheetEntryResource($e))->resolve($request)
+                'entry' => ($entry = $entries->get($u->id))
+                    ? (new TasksheetEntryResource($entry))->resolve($request)
                     : null,
             ])->values()->all(),
-            'trend' => $team ? $this->trend($team, $day) : [],
+            'trend' => $this->presentTrend($trend),
         ]);
     }
 
@@ -108,60 +95,20 @@ class TasksheetController extends ApiController
             [$from, $to] = [$to, $from];
         }
 
-        $query = TasksheetEntry::with(['team', 'member'])
-            ->where('user_id', $member->id)
-            ->when($this->filterId($request, 'team_id'), fn ($q, $id) => $q->where('team_id', $id))
-            ->when($from, fn ($q) => $q->whereDate('date', '>=', $from))
-            ->when($to, fn ($q) => $q->whereDate('date', '<=', $to))
-            ->orderByDesc('date')
-            ->orderByDesc('id');
+        $query = $this->tasksheet->history($member, $this->filterId($request, 'team_id'), $from, $to);
 
         return $this->paginate($request, $query, TasksheetEntryResource::class);
     }
 
-    /**
-     * Save one member's row for one date.
-     *
-     * Matched with `whereDate` rather than `firstOrNew`: the date cast stores a
-     * midnight timestamp, so an equality match on 'Y-m-d' misses the row on
-     * some drivers and would create a duplicate instead of updating.
-     */
+    /** Save one member's row for one date. */
     public function upsert(TasksheetEntryRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $date = Carbon::parse($data['date'])->toDateString();
 
-        $entry = TasksheetEntry::where('team_id', $data['team_id'])
-            ->where('user_id', $data['user_id'])
-            ->whereDate('date', $date)
-            ->first() ?? new TasksheetEntry([
-                'team_id' => $data['team_id'],
-                'user_id' => $data['user_id'],
-                'date' => $date,
-            ]);
-
+        $entry = $this->tasksheet->resolveEntry($data);
         $this->authorize('update', $entry);
 
-        $fields = collect($data)->only([
-            'plan', 'result', 'comment', 'tickets',
-            'work_points', 'ticket_count', 'ticket_points', 'leave_type',
-        ])->all();
-
-        // A full day off has no task content; half-day leave keeps it, since
-        // the member still works part of the day.
-        if (in_array($fields['leave_type'] ?? null, TasksheetEntry::FULL_DAY_LEAVE_TYPES, true)) {
-            $fields = ['leave_type' => $fields['leave_type']] + array_fill_keys(TasksheetEntry::TASK_FIELDS, null);
-        }
-
-        $entry->fill($fields);
-
-        // Feedback is a lead's private note. A member's save never reaches it,
-        // so it can be neither blanked nor forged from a member's client.
-        if ($request->user()->isLead() && $request->has('feedback')) {
-            $entry->feedback = $data['feedback'] ?? null;
-        }
-
-        $entry->save();
+        $this->tasksheet->save($entry, $data, $request->user(), $request->has('feedback'));
 
         return $this->ok(
             new TasksheetEntryResource($entry->load(['member', 'team'])),
@@ -170,66 +117,20 @@ class TasksheetController extends ApiController
     }
 
     /**
-     * The rows for a given day: developers and QA whose membership covered that
-     * date — including those who have since left, been deactivated, or been
-     * deleted — plus anyone with a saved entry that day.
+     * The shared trend uses the keys the Blade chart reads (`wp`, `current`);
+     * this API's published contract names them `work_points` and `is_current`.
      *
-     * @param  Collection<int, TasksheetEntry>  $entries
-     * @return Collection<int, User>
-     */
-    private function rowUsersFor(Team $team, Carbon $day, $entries)
-    {
-        $dayStr = $day->toDateString();
-
-        $members = $team->memberRecords()
-            ->withTrashed()
-            ->whereIn('role', [User::ROLE_DEVELOPER, User::ROLE_QA])
-            ->get()
-            ->filter(fn (User $u) => ($u->pivot->left_at === null || Carbon::parse($u->pivot->left_at)->toDateString() >= $dayStr)
-                && ($u->deleted_at === null || $u->deleted_at->toDateString() >= $dayStr)
-                && ($u->deactivated_at === null || $u->deactivated_at->toDateString() >= $dayStr));
-
-        return $members
-            ->concat($entries->map(fn (TasksheetEntry $e) => $e->member)->filter())
-            ->unique('id')
-            ->sortBy('name')
-            ->values();
-    }
-
-    /**
-     * Total work points booked per day over the trailing fortnight, for the
-     * team's productivity chart.
-     *
+     * @param  list<array<string, mixed>>  $trend
      * @return list<array<string, mixed>>
      */
-    private function trend(Team $team, Carbon $day): array
+    private function presentTrend(array $trend): array
     {
-        $windowStart = $day->copy()->subDays(13);
-
-        // Bounded with whereDate, not whereBetween: the `date` cast writes a
-        // midnight *timestamp*, so comparing it against plain 'Y-m-d' bounds
-        // sorts '2026-07-26 00:00:00' after '2026-07-26' and silently drops
-        // the most recent day — the one the chart is centred on.
-        $byDay = TasksheetEntry::where('team_id', $team->id)
-            ->whereDate('date', '>=', $windowStart->toDateString())
-            ->whereDate('date', '<=', $day->toDateString())
-            ->selectRaw('date, COALESCE(SUM(work_points), 0) as wp')
-            ->groupBy('date')
-            ->get()
-            ->mapWithKeys(fn ($r) => [Carbon::parse($r->date)->toDateString() => (int) $r->wp]);
-
-        $trend = [];
-        for ($i = 13; $i >= 0; $i--) {
-            $d = $day->copy()->subDays($i);
-            $trend[] = [
-                'date' => $d->toDateString(),
-                'label' => $d->format('j'),
-                'dow' => $d->format('D'),
-                'work_points' => $byDay[$d->toDateString()] ?? 0,
-                'is_current' => $d->isSameDay($day),
-            ];
-        }
-
-        return $trend;
+        return array_map(fn (array $day) => [
+            'date' => $day['date'],
+            'label' => $day['label'],
+            'dow' => $day['dow'],
+            'work_points' => $day['wp'],
+            'is_current' => $day['current'],
+        ], $trend);
     }
 }

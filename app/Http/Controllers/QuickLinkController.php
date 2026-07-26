@@ -4,16 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\QuickLinkRequest;
 use App\Models\QuickLink;
+use App\Services\QuickLinkService;
 use Illuminate\Http\RedirectResponse;
 
 class QuickLinkController extends Controller
 {
+    public function __construct(private readonly QuickLinkService $quickLinks) {}
+
     public function store(QuickLinkRequest $request): RedirectResponse
     {
-        QuickLink::create($request->safe()->merge([
-            'user_id' => $request->user()->id,
-            'visibility' => $request->validated('visibility') ?? QuickLink::VISIBILITY_PRIVATE,
-        ])->only(['user_id', 'release_id', 'label', 'url', 'visibility']));
+        $this->quickLinks->create($request->validated(), $request->user());
 
         return back()->with('success', 'Link added.')->with('quick-links-open', true);
     }
@@ -22,9 +22,7 @@ class QuickLinkController extends Controller
     {
         $this->authorize('update', $quickLink);
 
-        $quickLink->update($request->safe()->merge([
-            'visibility' => $request->validated('visibility') ?? $quickLink->visibility,
-        ])->only(['release_id', 'label', 'url', 'visibility']));
+        $this->quickLinks->update($quickLink, $request->validated());
 
         return back()->with('success', 'Link updated.')->with('quick-links-open', true);
     }

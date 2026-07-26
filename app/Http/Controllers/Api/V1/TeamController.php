@@ -7,32 +7,31 @@ use App\Http\Resources\V1\ReleaseSummaryResource;
 use App\Http\Resources\V1\TeamResource;
 use App\Models\Team;
 use App\Services\OverlapChecker;
+use App\Services\TeamService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 
 class TeamController extends ApiController
 {
+    public function __construct(private readonly TeamService $teams) {}
+
     public function index(Request $request): AnonymousResourceCollection
     {
-        $query = Team::with('teamLead')
-            ->withCount(['releases', 'members'])
-            ->when($request->filled('status'), fn ($q) => $request->input('status') === 'archived'
-                ? $q->whereNotNull('archived_at')
-                : $q->whereNull('archived_at'))
-            ->when($request->filled('search'), fn ($q) => $q->where('name', 'like', '%'.$request->string('search')->toString().'%'))
-            ->orderByRaw('archived_at is not null')
-            ->orderBy('name');
+        $query = $this->teams->filtered([
+            'status' => $request->input('status'),
+            'search' => $request->filled('search') ? $request->string('search')->toString() : null,
+        ]);
 
         return $this->paginate($request, $query, TeamResource::class);
     }
 
     /**
      * A team with its members, its lead, and its schedule — including which of
-     * its releases collide, since a double-booked team is the whole point of
-     * the conflict rule and a client should not have to recompute it.
+     * its releases collide, since a double-booked team is the point of the
+     * conflict rule and a client should not have to recompute it.
      */
-    public function show(Team $team, OverlapChecker $overlap): JsonResponse
+    public function show(Request $request, Team $team, OverlapChecker $overlap): JsonResponse
     {
         $team->load(['members', 'teamLead', 'releases.project', 'releases.team'])
             ->loadCount(['releases', 'members']);
@@ -42,7 +41,7 @@ class TeamController extends ApiController
 
         return $this->ok(
             (new TeamResource($team))->additional([
-                'releases' => ReleaseSummaryResource::collection($releases),
+                'releases' => ReleaseSummaryResource::collection($releases)->resolve($request),
                 'conflicting_release_ids' => array_map('intval', array_keys($conflicts)),
             ])
         );
@@ -72,7 +71,7 @@ class TeamController extends ApiController
     public function destroy(Team $team): JsonResponse
     {
         abort_if(
-            $team->releases()->exists(),
+            ! $this->teams->isDeletable($team),
             422,
             'This team owns releases and cannot be deleted. Archive it instead.'
         );
@@ -85,14 +84,14 @@ class TeamController extends ApiController
 
     public function archive(Team $team): JsonResponse
     {
-        $team->update(['archived_at' => now()]);
+        $this->teams->archive($team);
 
         return $this->ok(new TeamResource($team), "Team “{$team->name}” archived.");
     }
 
     public function restore(Team $team): JsonResponse
     {
-        $team->update(['archived_at' => null]);
+        $this->teams->restore($team);
 
         return $this->ok(new TeamResource($team), "Team “{$team->name}” restored.");
     }
