@@ -12,6 +12,7 @@ use App\Services\OverlapChecker;
 use App\Support\Timeline;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Collection;
 use Illuminate\View\View;
 
 class DashboardController extends Controller
@@ -84,7 +85,7 @@ class DashboardController extends Controller
      * timeline below them. The conflict figure reflects the current timeline view.
      *
      * @param  array<int, bool>  $conflicts
-     * @param  \Illuminate\Support\Collection<int, Release>  $timelineReleases
+     * @param  Collection<int, Release>  $timelineReleases
      * @return array<string, mixed>
      */
     private function analytics(int $year, ?int $quarter, Carbon $rangeStart, Carbon $rangeEnd, ?int $projectId, ?int $teamId, array $conflicts, $timelineReleases): array
@@ -246,7 +247,7 @@ class DashboardController extends Controller
      * Flag every visible release that overlaps another release owned by the same
      * team, considering the team's full schedule (including off-screen releases).
      *
-     * @param  \Illuminate\Support\Collection<int, Release>  $releases
+     * @param  Collection<int, Release>  $releases
      * @return array<int, bool>
      */
     private function conflictFlags($releases, OverlapChecker $overlap): array
@@ -267,7 +268,7 @@ class DashboardController extends Controller
     /**
      * Group releases (by team or project) and attach timeline geometry.
      *
-     * @param  \Illuminate\Support\Collection<int, Release>  $releases
+     * @param  Collection<int, Release>  $releases
      * @param  array<int, bool>  $conflicts
      */
     private function buildGroups($releases, string $groupBy, Carbon $rangeStart, Carbon $rangeEnd, array $conflicts): array

@@ -11,14 +11,13 @@ use App\Models\User;
 use App\Services\OverlapChecker;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ReleaseController extends Controller
 {
-    public function __construct(private readonly OverlapChecker $overlap)
-    {
-    }
+    public function __construct(private readonly OverlapChecker $overlap) {}
 
     public function index(Request $request): View
     {
@@ -236,7 +235,7 @@ class ReleaseController extends Controller
     {
         $submitted = collect($offDays)
             ->filter(fn ($o) => filled($o['date'] ?? null))
-            ->keyBy(fn ($o) => \Illuminate\Support\Carbon::parse($o['date'])->toDateString());
+            ->keyBy(fn ($o) => Carbon::parse($o['date'])->toDateString());
 
         $existing = $release->offDays()->get()->keyBy(fn ($o) => $o->date->toDateString());
 

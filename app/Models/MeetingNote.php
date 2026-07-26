@@ -21,6 +21,7 @@ class MeetingNote extends Model
     use RecordsActivity;
 
     public const VISIBILITY_EVERYONE = 'everyone';
+
     public const VISIBILITY_ATTENDEES = 'attendees';
 
     /** @var array<string, string> */

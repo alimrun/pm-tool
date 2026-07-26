@@ -13,7 +13,9 @@ use Illuminate\Support\HtmlString;
 class Note extends Model
 {
     public const VISIBILITY_PRIVATE = 'private';
+
     public const VISIBILITY_SHARED = 'shared';
+
     public const VISIBILITY_SPECIFIC = 'specific';
 
     /** @var array<string, string> */

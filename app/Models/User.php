@@ -14,13 +14,14 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Laravel\Sanctum\HasApiTokens;
 
 #[Fillable(['name', 'email', 'password', 'role', 'deactivated_at'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, RecordsActivity, SoftDeletes;
+    use HasApiTokens, HasFactory, Notifiable, RecordsActivity, SoftDeletes;
 
     public const ROLE_ADMIN = 'admin';
 
@@ -220,6 +221,12 @@ class User extends Authenticatable
     public function teams(): BelongsToMany
     {
         return $this->belongsToMany(Team::class)->withTimestamps()->wherePivotNull('left_at');
+    }
+
+    /** Teams this user is the assigned lead of (the query form of leadsTeam). */
+    public function ledTeams(): HasMany
+    {
+        return $this->hasMany(Team::class, 'team_lead_id')->orderBy('name');
     }
 
     /** Releases this user is assigned to. */

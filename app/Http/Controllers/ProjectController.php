@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\ProjectRequest;
 use App\Models\Activity;
 use App\Models\Project;
+use App\Models\Release;
 use App\Models\Task;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Http\RedirectResponse;
@@ -73,7 +74,7 @@ class ProjectController extends Controller
     /**
      * Headline metrics and chart series for a single project's detail page.
      *
-     * @param  Collection<int, \App\Models\Release>  $releases
+     * @param  Collection<int, Release>  $releases
      * @return array<string, mixed>
      */
     private function analytics(Project $project, Collection $releases): array

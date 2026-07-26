@@ -19,6 +19,7 @@ use Illuminate\Support\HtmlString;
 class TasksheetEntry extends Model
 {
     use RecordsActivity;
+
     /** @var array<string, string> */
     public const LEAVE_TYPES = [
         'casual' => 'Casual leave',

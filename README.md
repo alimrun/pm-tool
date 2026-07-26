@@ -98,6 +98,37 @@ DB_PASSWORD=
 > version-mismatch issue. The schema is standard and portable — switching to MySQL is just the
 > `.env` change above.
 
+## REST API (for the desktop client)
+
+Everything above is also reachable over a versioned REST API at **`/api/v1`**, so a
+cross-platform desktop application can serve all seven roles with exactly the access each role
+has in the browser. See **[`docs/api-v1.md`](docs/api-v1.md)** for the full reference.
+
+```bash
+# 1. exchange credentials for a token
+curl -X POST http://127.0.0.1:8000/api/v1/auth/login \
+  -H 'Content-Type: application/json' -H 'Accept: application/json' \
+  -d '{"email":"admin@example.com","password":"password","device_name":"Desktop"}'
+
+# 2. use it
+curl http://127.0.0.1:8000/api/v1/dashboard \
+  -H 'Authorization: Bearer <token>' -H 'Accept: application/json'
+```
+
+- **Auth** — Laravel Sanctum personal access tokens; stateless, no CSRF. Multi-device with
+  per-device revocation. Deactivating an account revokes its tokens immediately.
+- **Discovery** — `GET /me` returns the caller's effective permission flags; `GET /meta` returns
+  every domain enumeration (statuses, phases, colors, visibilities, the 1–5 scale). Clients build
+  their navigation and pickers from these instead of hard-coding them.
+- **Role parity** — the API reuses the *same* policies, gates, and role middleware as the web
+  routes, so a permission rule cannot drift between the two surfaces. Restricted fields
+  (tasksheet `feedback`, performance scores) are **omitted** from payloads, not merely hidden.
+- **Additive** — `routes/web.php` and the Blade app are untouched.
+
+Built spec-first: see
+[`openspec/changes/desktop-rest-api-v1/`](openspec/changes/desktop-rest-api-v1/) for the proposal,
+capability specs, design, and task list.
+
 ## Tests
 
 ```bash
@@ -105,7 +136,9 @@ php artisan test
 ```
 
 Covers the overlap predicate and timeline math (unit) plus release creation, phase validation,
-the overlap warning, and role gating (feature).
+the overlap warning, and role gating (feature). `tests/Feature/Api/V1/` covers the API by
+capability spec: token auth and device revocation, role parity for all seven roles,
+restricted-field omission, and the domain rules the API must preserve.
 
 ## Architecture notes
 

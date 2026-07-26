@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class QuickLink extends Model
 {
     public const VISIBILITY_PRIVATE = 'private';
+
     public const VISIBILITY_SHARED = 'shared';
 
     /** @var array<string, string> */
