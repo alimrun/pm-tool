@@ -344,8 +344,20 @@ routes/api/v1/{auth,account,workspace,releases,collaboration,tasksheet,performan
 app/Http/Controllers/Api/V1/        → controllers (ApiController is the shared base)
 app/Http/Resources/V1/              → API resources
 app/Http/Requests/Api/V1/           → API-only requests (login, password, board move, …)
+app/Services/                       → the domain logic, shared with the web app
 ```
+
+**The API is not a second implementation.** Every query, calculation, and multi-step write lives in
+`app/Services/`, called by both the API controller and its Blade counterpart. An API controller
+resolves request input, delegates, and maps the result through a Resource — nothing more. So a
+change to a domain rule reaches the desktop client and the browser together, and cannot reach one
+without the other.
 
 Validation for domain writes reuses the existing `app/Http/Requests/*` classes, and authorization
 reuses the existing policies, gates, and role middleware — so the API and the web app can never
-drift apart on a rule.
+drift apart on a rule. `tests/Feature/Services/WebApiParityTest.php` asserts this directly: the same
+records are driven through both surfaces and the numbers must match.
+
+One consequence worth knowing as a client author: where this document's payloads use `snake_case`
+and the Blade views use `camelCase`, that is a per-format presentation mapping in the controller,
+not two computations. The numbers behind both are identical by construction.

@@ -145,6 +145,21 @@ restricted-field omission, and the domain rules the API must preserve.
 - **Domain model:** `Project`, `Team`, `Release` (belongs to one project + one team), `ReleasePhase`
   (four ordered rows per release), `ReleaseDocument`, `Task` (self-referencing `parent_id` for one
   level of subtasks), `Comment` (polymorphic — releases + tasks), `ReleaseOffDay`, `Activity`.
+- **Service layer (`App\Services\`) is where domain logic lives.** The web app and the REST API are
+  two delivery mechanisms over one implementation: a controller resolves its input, delegates to a
+  service, and presents the result. Controllers hold no queries, no date arithmetic, and no
+  multi-step writes. `DashboardService`, `ReleaseService`, `TaskService`, `BoardService`,
+  `TasksheetService`, `PerformanceEvaluationService`, `ActivityInsights`, `EventService`,
+  `NoteService`, `MeetingNoteService`, `QuickLinkService`, `TeamService`, `ProjectService`, and
+  `UserService` each own one aggregate's rules.
+  - Services return **domain values** — models, Carbon instances, collections — never responses,
+    resources, or formatted strings. That is what lets one computation serve Blade and JSON: the
+    web controller passes it to a view, the API controller maps it through a Resource. Field
+    *naming* per format is the only thing that differs.
+  - **Authorization stays out of the services**, in middleware, policies, and gates. A service may
+    scope a query by viewer (which records) but never decides whether the actor may act.
+  - `tests/Feature/Services/WebApiParityTest.php` drives the same records through both surfaces and
+    asserts the numbers agree, so a reintroduced copy of a query fails the suite.
 - **`App\Services\OverlapChecker`** is the single definition of "two same-team windows overlap,"
   reused by the save-time warning and the dashboard highlight.
 - **`App\Support\Timeline`** does pure date→percent math for the timeline (offset/width, clipping,

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Activity;
 use App\Models\Project;
+use App\Models\Release;
 use App\Models\Task;
 use Illuminate\Contracts\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
@@ -35,7 +36,7 @@ class ProjectService
      * A project's releases with their owning team and per-release task
      * roll-ups, so the detail page draws progress bars without an N+1.
      *
-     * @return Collection<int, \App\Models\Release>
+     * @return Collection<int, Release>
      */
     public function releasesWithProgress(Project $project): Collection
     {
@@ -93,7 +94,7 @@ class ProjectService
     /**
      * Headline metrics and chart series for a single project's detail page.
      *
-     * @param  Collection<int, \App\Models\Release>  $releases
+     * @param  Collection<int, Release>  $releases
      * @return array<string, mixed>
      */
     public function analytics(Project $project, Collection $releases): array

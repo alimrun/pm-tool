@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Event;
 use App\Services\EventService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -38,7 +39,7 @@ class CalendarController extends Controller
      * Lay the window out as weeks of seven days — a view concern, so it stays
      * here rather than in the service the API also uses.
      *
-     * @param  array<string, list<\App\Models\Event>>  $byDate
+     * @param  array<string, list<Event>>  $byDate
      * @return list<list<array<string, mixed>>>
      */
     private function buildWeeks(Carbon $gridStart, Carbon $gridEnd, int $month, array $byDate): array
