@@ -368,6 +368,47 @@ class TasksheetStandupAndReportTest extends TestCase
         }
     }
 
+    public function test_the_daily_sheet_offers_a_team_wide_date_range_export(): void
+    {
+        $team = $this->team();
+        $lead = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $dev = $this->member($team);
+        $this->entry($team, $dev, ['date' => today()->toDateString(), 'plan' => 'Work']);
+
+        // The sheet must expose the range itself — its own view is a single day,
+        // so without these inputs a team-wide span is unreachable from the UI.
+        $this->actingAs($lead)
+            ->get(route('tasksheet.index', ['team' => $team->id, 'date' => today()->toDateString()]))
+            ->assertOk()
+            ->assertSee('name="from"', false)
+            ->assertSee('name="to"', false)
+            ->assertSee(route('tasksheet.report'), false);
+    }
+
+    public function test_a_team_range_export_spans_more_than_the_viewed_day(): void
+    {
+        $team = $this->team();
+        $lead = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $dev = $this->member($team);
+
+        $this->entry($team, $dev, ['date' => '2026-08-03', 'plan' => 'Monday work']);
+        $this->entry($team, $dev, ['date' => '2026-08-05', 'plan' => 'Wednesday work']);
+
+        $tasksheet = app(TasksheetService::class);
+
+        // What the popover submits: team + from/to, no single `date`.
+        [$from, $to] = $tasksheet->reportRange(['from' => '2026-08-01', 'to' => '2026-08-31']);
+        $this->assertCount(2, $tasksheet->reportRows($team->id, null, $from, $to, $tasksheet->parseFilters([])));
+
+        // A reversed range is swapped rather than returning nothing.
+        [$from, $to] = $tasksheet->reportRange(['from' => '2026-08-31', 'to' => '2026-08-01']);
+        $this->assertSame(['2026-08-01', '2026-08-31'], [$from, $to]);
+
+        $this->actingAs($lead)->get(route('tasksheet.report', [
+            'team' => $team->id, 'from' => '2026-08-01', 'to' => '2026-08-31',
+        ]))->assertOk();
+    }
+
     public function test_a_member_cannot_pull_a_team_report_but_can_pull_their_own(): void
     {
         $team = $this->team();

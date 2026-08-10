@@ -95,9 +95,11 @@
                     @endif
                 </div>
 
-                {{-- Filters — one GET form so they compose, plus the PDF export
-                     which carries whatever is currently applied. --}}
-                <form method="GET" action="{{ route('tasksheet.index') }}" class="card card-pad flex flex-wrap items-end gap-3">
+                {{-- Filters and export sit in one card but are two separate GET
+                     forms — the export needs its own date range, and forms
+                     cannot nest. --}}
+                <div class="card card-pad flex flex-wrap items-end gap-3">
+                <form method="GET" action="{{ route('tasksheet.index') }}" class="flex flex-wrap items-end gap-3">
                     <input type="hidden" name="team" value="{{ $team->id }}">
                     <input type="hidden" name="date" value="{{ $day->toDateString() }}">
 
@@ -149,18 +151,45 @@
                             <a href="{{ route('tasksheet.index', ['team' => $team->id, 'date' => $day->toDateString()]) }}" class="btn-ghost btn-sm">Clear all</a>
                         @endif
                     </div>
-
-                    <div class="ml-auto">
-                        <a href="{{ route('tasksheet.report', array_filter([
-                                'team' => $team->id,
-                                'date' => $day->toDateString(),
-                                'attendance' => $filters['attendance'],
-                                'fill' => $filters['fill'],
-                                'leave' => $filters['leave'],
-                                'member' => $filters['member'],
-                            ])) }}" class="btn-secondary btn-sm">Export PDF</a>
-                    </div>
                 </form>
+
+                {{-- Export: defaults to the viewed day, but the range is editable
+                     here — the sheet itself is always one day, so this is the
+                     only place a team-wide span can be chosen. --}}
+                <div class="relative ml-auto" x-data="{ open: false }" @click.outside="open = false" @keydown.escape.window="open = false">
+                    <button type="button" @click="open = !open" class="btn-secondary btn-sm">
+                        Export PDF
+                        <x-icon name="chevron-down" class="ml-1 h-3 w-3" />
+                    </button>
+
+                    <form method="GET" action="{{ route('tasksheet.report') }}" x-show="open" x-transition style="display: none;"
+                          class="absolute right-0 z-20 mt-2 w-64 space-y-3 rounded-xl border border-slate-200 bg-white p-4 shadow-lg">
+                        <input type="hidden" name="team" value="{{ $team->id }}">
+                        {{-- The filters in effect travel with the download. --}}
+                        @foreach (['attendance', 'fill', 'leave', 'member'] as $key)
+                            @if ($filters[$key])
+                                <input type="hidden" name="{{ $key }}" value="{{ $filters[$key] }}">
+                            @endif
+                        @endforeach
+
+                        <p class="text-xs font-semibold uppercase tracking-wide text-slate-500">Date range</p>
+
+                        <div>
+                            <label for="report-from" class="mb-1 block text-[11px] font-medium text-slate-500">From</label>
+                            <input id="report-from" type="date" name="from" value="{{ $day->toDateString() }}"
+                                   class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                        </div>
+                        <div>
+                            <label for="report-to" class="mb-1 block text-[11px] font-medium text-slate-500">To</label>
+                            <input id="report-to" type="date" name="to" value="{{ $day->toDateString() }}"
+                                   class="w-full rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                        </div>
+
+                        <p class="text-[11px] text-slate-400">Defaults to this day. A reversed range is swapped, not rejected.</p>
+                        <button class="btn-primary btn-sm w-full justify-center">Download</button>
+                    </form>
+                </div>
+                </div>
 
                 <div class="card overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
