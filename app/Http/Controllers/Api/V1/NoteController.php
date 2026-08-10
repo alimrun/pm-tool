@@ -27,9 +27,13 @@ class NoteController extends ApiController
             'date' => ['nullable', 'date'],
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
+            // No `exists` rule: an unknown id returns an empty page rather than
+            // an error that confirms whether that user exists.
+            'author' => ['nullable', 'integer'],
         ]);
 
-        $filters = $this->notes->normalizeFilters($request->only(['date', 'from', 'to']));
+        $filters = $this->notes->normalizeFilters($request->only(['date', 'from', 'to']))
+            + ['author' => $this->filterId($request, 'author')];
 
         return $this->paginate(
             $request,

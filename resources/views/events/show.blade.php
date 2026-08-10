@@ -77,7 +77,10 @@
                                             <span class="text-sm font-medium text-slate-800 group-hover:text-brand-700">{{ $note->title }}</span>
                                             <span class="shrink-0 text-xs text-slate-400">{{ $note->meeting_date->format('M j, Y') }}</span>
                                         </div>
-                                        <p class="mt-0.5 text-xs text-slate-400">{{ $note->author->name ?? 'Unknown' }}</p>
+                                        <p class="mt-0.5 flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
+                                            <x-meeting-note-type :note="$note" />
+                                            <span>{{ $note->author->name ?? 'Unknown' }}</span>
+                                        </p>
                                         <p class="mt-1 text-sm text-slate-600">{{ Str::limit(trim(strip_tags($note->body)), 120) }}</p>
                                     </a>
                                 </li>

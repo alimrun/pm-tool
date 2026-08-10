@@ -21,6 +21,8 @@ class QuickLinkResource extends JsonResource
             'visibility' => $this->visibility,
             'visibility_label' => QuickLink::VISIBILITIES[$this->visibility] ?? ucfirst((string) $this->visibility),
             'is_shared' => $this->isShared(),
+            // The requesting user's own pin — never anyone else's.
+            'is_pinned' => $request->user() ? $this->isPinnedBy($request->user()) : false,
             'release_id' => $this->release_id,
             'release' => new ReleaseSummaryResource($this->whenLoaded('release')),
             'author' => new UserSummaryResource($this->whenLoaded('author')),

@@ -3,6 +3,7 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <h2 class="page-title">{{ $meetingNote->title }}</h2>
+                <x-meeting-note-type :note="$meetingNote" />
                 @if ($meetingNote->release)
                     <span class="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-700">{{ $meetingNote->release->name }}</span>
                 @else

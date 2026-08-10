@@ -47,12 +47,14 @@
                     $tsTickets = $entries->sum('ticket_count');
                     $tsOnLeave = $entries->filter(fn ($e) => $e->leave_type)->count();
                     $tsSubmitted = $entries->filter(fn ($e) => ! $e->leave_type)->count();
-                    $tsPending = max($rowUsers->count() - $entries->count(), 0);
+                    // Totals are deliberately computed from the *unfiltered* roster:
+                    // narrowing the list is a lens on the day, not a change to it.
+                    $tsPending = max($allRowUsers->count() - $entries->count(), 0);
                     $tMax = collect($trend)->max('wp') ?: 0;
                 @endphp
 
                 <div class="grid grid-cols-2 gap-4 lg:grid-cols-4">
-                    @include('partials.stat-tile', ['label' => 'Submitted', 'value' => $tsSubmitted, 'sub' => 'of '.$rowUsers->count().' '.\Illuminate\Support\Str::plural('member', $rowUsers->count()), 'icon' => 'list', 'tone' => 'emerald'])
+                    @include('partials.stat-tile', ['label' => 'Submitted', 'value' => $tsSubmitted, 'sub' => 'of '.$allRowUsers->count().' '.\Illuminate\Support\Str::plural('member', $allRowUsers->count()), 'icon' => 'list', 'tone' => 'emerald'])
                     @include('partials.stat-tile', ['label' => 'On leave', 'value' => $tsOnLeave, 'sub' => 'casual or sick', 'icon' => 'pause', 'tone' => 'amber'])
                     @include('partials.stat-tile', ['label' => 'Pending', 'value' => $tsPending, 'sub' => 'not filled yet', 'icon' => 'user', 'tone' => 'slate'])
                     @include('partials.stat-tile', ['label' => 'Work points', 'value' => $tsWorkPoints, 'sub' => $tsTickets.' '.\Illuminate\Support\Str::plural('ticket', $tsTickets).' logged', 'icon' => 'activity', 'tone' => 'brand'])
@@ -93,11 +95,79 @@
                     @endif
                 </div>
 
+                {{-- Filters — one GET form so they compose, plus the PDF export
+                     which carries whatever is currently applied. --}}
+                <form method="GET" action="{{ route('tasksheet.index') }}" class="card card-pad flex flex-wrap items-end gap-3">
+                    <input type="hidden" name="team" value="{{ $team->id }}">
+                    <input type="hidden" name="date" value="{{ $day->toDateString() }}">
+
+                    <div>
+                        <label for="f-attendance" class="field-label !mt-0 text-slate-500">Standup</label>
+                        <select id="f-attendance" name="attendance" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                            <option value="">Any</option>
+                            <option value="attended" @selected($filters['attendance'] === 'attended')>Attended</option>
+                            <option value="missed" @selected($filters['attendance'] === 'missed')>Did not attend</option>
+                            <option value="unmarked" @selected($filters['attendance'] === 'unmarked')>Not yet marked</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="f-fill" class="field-label !mt-0 text-slate-500">Sheet</label>
+                        <select id="f-fill" name="fill" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                            <option value="">Any</option>
+                            <option value="complete" @selected($filters['fill'] === 'complete')>Complete</option>
+                            <option value="partial" @selected($filters['fill'] === 'partial')>Partially filled</option>
+                            <option value="empty" @selected($filters['fill'] === 'empty')>Empty</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="f-leave" class="field-label !mt-0 text-slate-500">Leave</label>
+                        <select id="f-leave" name="leave" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                            <option value="">Any</option>
+                            <option value="working" @selected($filters['leave'] === 'working')>Working</option>
+                            <option value="any" @selected($filters['leave'] === 'any')>On leave</option>
+                            @foreach (\App\Models\TasksheetEntry::LEAVE_TYPES as $val => $label)
+                                <option value="{{ $val }}" @selected($filters['leave'] === $val)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div>
+                        <label for="f-member" class="field-label !mt-0 text-slate-500">Member</label>
+                        <select id="f-member" name="member" class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                            <option value="">Everyone</option>
+                            @foreach ($allRowUsers as $u)
+                                <option value="{{ $u->id }}" @selected($filters['member'] === $u->id)>{{ $u->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+
+                    <div class="flex items-center gap-2">
+                        <button class="btn-secondary btn-sm">Apply</button>
+                        @if ($hasFilters)
+                            <a href="{{ route('tasksheet.index', ['team' => $team->id, 'date' => $day->toDateString()]) }}" class="btn-ghost btn-sm">Clear all</a>
+                        @endif
+                    </div>
+
+                    <div class="ml-auto">
+                        <a href="{{ route('tasksheet.report', array_filter([
+                                'team' => $team->id,
+                                'date' => $day->toDateString(),
+                                'attendance' => $filters['attendance'],
+                                'fill' => $filters['fill'],
+                                'leave' => $filters['leave'],
+                                'member' => $filters['member'],
+                            ])) }}" class="btn-secondary btn-sm">Export PDF</a>
+                    </div>
+                </form>
+
                 <div class="card overflow-x-auto">
                     <table class="min-w-full divide-y divide-slate-200 text-sm">
                         <thead class="bg-slate-50">
                             <tr>
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Member</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500" title="Attended the daily standup">Standup</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Task Plan at Morning</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Day End Result</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Comment</th>
@@ -114,8 +184,14 @@
                         @if ($rowUsers->isEmpty())
                             <tbody>
                                 <tr>
-                                    <td colspan="{{ auth()->user()->isLead() ? 10 : 9 }}" class="px-3 py-12 text-center text-sm text-slate-500">
-                                        No developers or QA on this team{{ $isPast ? ' and no entries for this day' : '' }}.
+                                    <td colspan="{{ auth()->user()->isLead() ? 11 : 10 }}" class="px-3 py-12 text-center text-sm text-slate-500">
+                                        @if ($hasFilters)
+                                            No rows match these filters.
+                                            <a href="{{ route('tasksheet.index', ['team' => $team->id, 'date' => $day->toDateString()]) }}"
+                                               class="text-brand-600 hover:underline">Clear filters</a>.
+                                        @else
+                                            No developers or QA on this team{{ $isPast ? ' and no entries for this day' : '' }}.
+                                        @endif
                                     </td>
                                 </tr>
                             </tbody>

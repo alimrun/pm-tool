@@ -21,6 +21,9 @@ class MeetingNoteResource extends JsonResource
         return [
             'id' => $this->id,
             'title' => $this->title,
+            'type' => $this->type,
+            'type_label' => $this->typeLabel(),
+            'type_color' => $this->typeColor(),
             'meeting_date' => $this->meeting_date?->toDateString(),
             'body' => $this->body,
             'visibility' => $this->visibility,

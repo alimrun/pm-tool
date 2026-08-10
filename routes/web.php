@@ -170,11 +170,14 @@ Route::middleware('auth')->group(function () {
     // Quick links (drawer; limited roles are private-only)
     Route::post('quick-links', [QuickLinkController::class, 'store'])->name('quick-links.store');
     Route::put('quick-links/{quickLink}', [QuickLinkController::class, 'update'])->name('quick-links.update');
+    Route::post('quick-links/{quickLink}/pin', [QuickLinkController::class, 'pin'])->name('quick-links.pin');
     Route::delete('quick-links/{quickLink}', [QuickLinkController::class, 'destroy'])->name('quick-links.destroy');
 
     // Team tasksheet (daily grid; feedback column is lead-only)
     Route::get('tasksheet', [TasksheetController::class, 'index'])->name('tasksheet.index');
     Route::put('tasksheet/entries', [TasksheetController::class, 'upsert'])->name('tasksheet.entries.upsert');
+    Route::post('tasksheet/standup', [TasksheetController::class, 'verifyStandup'])->name('tasksheet.standup');
+    Route::get('tasksheet/report.pdf', [TasksheetController::class, 'report'])->name('tasksheet.report');
     Route::get('tasksheet/users/{member}', [TasksheetController::class, 'user'])
         ->name('tasksheet.user')
         ->withTrashed(); // history pages must resolve deleted users too

@@ -23,7 +23,14 @@ class QuickLinkService
     private const WRITABLE = ['release_id', 'label', 'url', 'visibility'];
 
     /**
-     * Links the viewer may see, newest first.
+     * The links that belong in the viewer's drawer, ordered pinned → private →
+     * shared, newest first within each band.
+     *
+     * This is the *drawer's* listing rule, deliberately narrower than the
+     * model's `visibleTo` scope: a link attached to a finished release stops
+     * being drawer material, but the release-details card must keep listing it
+     * (design decision 3). The model scope answers "may this user see this
+     * link at all"; this method answers "does it belong in the drawer now".
      *
      * @return Builder<QuickLink>
      */
@@ -31,8 +38,18 @@ class QuickLinkService
     {
         return QuickLink::query()
             ->with(['author', 'release'])
+            // The viewer's own pin state as one subquery column — what the
+            // ordering sorts on, and what spares the drawer a query per row.
+            ->withExists(['pinnedBy as is_pinned' => fn ($q) => $q->whereKey($viewer->id)])
             ->visibleTo($viewer)
+            // Links attached to no release always pass; only a *completed*
+            // release's links drop out. Reversible: reopening restores them.
+            ->whereDoesntHave('release', fn ($q) => $q->whereNotNull('completed_at'))
             ->when($releaseId, fn ($q, $id) => $q->where('release_id', $id))
+            ->orderByDesc('is_pinned')
+            // Explicit rather than relying on 'private' sorting before 'shared'
+            // alphabetically — that would silently break if a value is renamed.
+            ->orderByRaw('(visibility = ?) desc', [QuickLink::VISIBILITY_PRIVATE])
             ->orderByDesc('id');
     }
 
@@ -50,6 +67,17 @@ class QuickLinkService
             ->partition(fn (QuickLink $link) => $link->user_id === $viewer->id);
 
         return ['mine' => $mine->values(), 'shared' => $shared->values()];
+    }
+
+    /**
+     * Flip the viewer's pin on a link. Returns the resulting state so a caller
+     * never has to re-read it to know which way the toggle went.
+     */
+    public function togglePin(QuickLink $link, User $viewer): bool
+    {
+        $changed = $link->pinnedBy()->toggle($viewer->id);
+
+        return filled($changed['attached']);
     }
 
     /** @param array<string, mixed> $attributes */

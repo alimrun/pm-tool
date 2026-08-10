@@ -22,4 +22,14 @@ class TasksheetEntryPolicy
         return $entry->user_id === $user->id
             && $entry->team->members()->whereKey($user->id)->exists();
     }
+
+    /**
+     * Verifying standup attendance is leads only. Deliberately not routed
+     * through `update`, which also grants a member their own row — a member
+     * must never be able to vouch for their own attendance.
+     */
+    public function verifyStandup(User $user, TasksheetEntry $entry): bool
+    {
+        return $user->isLead();
+    }
 }

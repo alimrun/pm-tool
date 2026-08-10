@@ -8,9 +8,11 @@ use App\Http\Resources\V1\TeamSummaryResource;
 use App\Http\Resources\V1\UserSummaryResource;
 use App\Models\User;
 use App\Services\TasksheetService;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Http\Response;
 use Illuminate\Support\Carbon;
 
 /**
@@ -47,12 +49,18 @@ class TasksheetController extends ApiController
         $rowUsers = collect();
         $viewerIsMember = false;
         $trend = [];
+        $filters = $this->tasksheet->parseFilters($request->only(['attendance', 'fill', 'leave', 'member']));
 
         if ($team) {
             $entries = $this->tasksheet->entriesFor($team, $day);
-            $rowUsers = $this->tasksheet->rowUsersFor($team, $day, $entries);
             $viewerIsMember = $team->members()->whereKey($viewer->id)->exists();
             $trend = $this->tasksheet->trend($team, $day);
+
+            // Same collection-level filtering as the Blade sheet, through the
+            // same predicate — a member with no row is still a row here.
+            $rowUsers = $this->tasksheet->rowUsersFor($team, $day, $entries)->filter(
+                fn (User $u) => $this->tasksheet->rowMatches($entries->get($u->id), $u->id, $filters)
+            )->values();
         }
 
         return $this->ok([
@@ -95,9 +103,74 @@ class TasksheetController extends ApiController
             [$from, $to] = [$to, $from];
         }
 
-        $query = $this->tasksheet->history($member, $this->filterId($request, 'team_id'), $from, $to);
+        $query = $this->tasksheet->applyHistoryFilters(
+            $this->tasksheet->history($member, $this->filterId($request, 'team_id'), $from, $to),
+            $this->tasksheet->parseFilters($request->only(['attendance', 'fill', 'leave'])),
+        );
 
         return $this->paginate($request, $query, TasksheetEntryResource::class);
+    }
+
+    /**
+     * Record standup attendance. Leads only, via the verifyStandup policy —
+     * `update` would not do, since it also grants a member their own row.
+     */
+    public function verifyStandup(Request $request): JsonResponse
+    {
+        $data = $request->validate([
+            'team_id' => ['required', 'integer', 'exists:teams,id'],
+            'user_id' => ['required', 'integer', 'exists:users,id'],
+            'date' => ['required', 'date'],
+            'attended' => ['nullable', 'boolean'],
+        ]);
+
+        $this->authorize('verifyStandup', $this->tasksheet->resolveEntry($data));
+
+        $raw = $request->input('attended');
+
+        $entry = $this->tasksheet->setStandupAttendance(
+            $data,
+            $raw === null || $raw === '' ? null : $request->boolean('attended'),
+            $request->user(),
+        );
+
+        return $this->ok(
+            new TasksheetEntryResource($entry->load(['member', 'team'])),
+            'Standup attendance saved.'
+        );
+    }
+
+    /**
+     * The tasksheet as a PDF — a day, a range, or one member. Team-wide is
+     * lead-only; a member may export only their own rows. `feedback` is
+     * included or withheld by the shared service, keyed on the requester.
+     */
+    public function report(Request $request): Response
+    {
+        $request->validate([
+            'team' => ['nullable', 'integer', 'exists:teams,id'],
+            'member' => ['nullable', 'integer', 'exists:users,id'],
+            'date' => ['nullable', 'date'],
+            'from' => ['nullable', 'date'],
+            'to' => ['nullable', 'date'],
+        ]);
+
+        $viewer = $request->user();
+        $memberId = $this->filterId($request, 'member');
+
+        abort_unless($viewer->isLead() || $memberId === $viewer->id, 403);
+
+        [$from, $to] = $this->tasksheet->reportRange($request->only(['date', 'from', 'to']));
+
+        $data = $this->tasksheet->reportData(
+            $this->filterId($request, 'team'), $memberId, $from, $to,
+            $this->tasksheet->parseFilters($request->only(['attendance', 'fill', 'leave'])),
+            $viewer,
+        );
+
+        return Pdf::loadView('tasksheet.report', $data)
+            ->setPaper('a4', 'landscape')
+            ->download($this->tasksheet->reportFilename($data));
     }
 
     /** Save one member's row for one date. */

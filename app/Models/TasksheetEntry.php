@@ -45,6 +45,13 @@ class TasksheetEntry extends Model
         'plan', 'result', 'comment', 'tickets', 'work_points', 'ticket_count', 'ticket_points',
     ];
 
+    /**
+     * `standup_attended` is deliberately absent: like `feedback` it is not a
+     * member's to write, and unlike `feedback` there is no lead-only branch on
+     * the save path that could set it. Its only write path is
+     * TasksheetService::setStandupAttendance(), behind the verifyStandup
+     * policy — so no mass-assignment route to it exists at all.
+     */
     protected $fillable = [
         'team_id', 'user_id', 'date', 'plan', 'result', 'comment', 'tickets',
         'work_points', 'ticket_count', 'ticket_points', 'leave_type', 'feedback',
@@ -61,6 +68,8 @@ class TasksheetEntry extends Model
             'work_points' => 'integer',
             'ticket_count' => 'integer',
             'ticket_points' => 'integer',
+            // Three-valued: true / false / null ("not yet marked").
+            'standup_attended' => 'boolean',
         ];
     }
 
@@ -119,6 +128,32 @@ class TasksheetEntry extends Model
     public function isOnLeave(): bool
     {
         return $this->leave_type !== null;
+    }
+
+    /**
+     * Standup attendance is three-valued, so these compare strictly — a plain
+     * truthiness check or `??` would collapse "not yet marked" into "did not
+     * attend", which is exactly the distinction the filters rely on.
+     */
+    public function attendedStandup(): bool
+    {
+        return $this->standup_attended === true;
+    }
+
+    public function missedStandup(): bool
+    {
+        return $this->standup_attended === false;
+    }
+
+    public function isStandupUnmarked(): bool
+    {
+        return $this->standup_attended === null;
+    }
+
+    /** Attendance is not a meaningful question for someone off the whole day. */
+    public function acceptsStandupAttendance(): bool
+    {
+        return ! $this->isFullDayLeave();
     }
 
     /** A full day off (casual/sick) — clears task fields, member is absent. */

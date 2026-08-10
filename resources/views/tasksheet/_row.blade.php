@@ -25,6 +25,38 @@
             @endif
         </td>
 
+        {{-- Standup verification: leads toggle it straight from the list, and it
+             posts on its own so a member's in-progress row is never touched. --}}
+        <td class="px-3 py-3 text-center">
+            @if ($entry?->isFullDayLeave())
+                <span class="text-xs text-slate-300" title="On full-day leave — standup does not apply">—</span>
+            @elseif ($isLeadViewer)
+                <form method="POST" action="{{ route('tasksheet.standup') }}" class="inline">
+                    @csrf
+                    <input type="hidden" name="team_id" value="{{ $team->id }}">
+                    <input type="hidden" name="user_id" value="{{ $rowUser->id }}">
+                    <input type="hidden" name="date" value="{{ $day->toDateString() }}">
+                    <input type="hidden" name="attended" value="0">
+                    <input type="checkbox" name="attended" value="1" onchange="this.form.submit()"
+                           @checked($entry?->attendedStandup())
+                           title="{{ $entry?->isStandupUnmarked() ?? true ? 'Not yet marked' : ($entry->attendedStandup() ? 'Attended standup' : 'Did not attend standup') }}"
+                           aria-label="Standup attendance for {{ $rowUser->name }}"
+                           class="h-4 w-4 rounded border-slate-300 text-brand-600 focus:ring-brand-500">
+                </form>
+                @if ($entry?->missedStandup())
+                    <div class="mt-0.5 text-[10px] font-medium text-rose-600">Missed</div>
+                @elseif ($entry?->isStandupUnmarked() ?? true)
+                    <div class="mt-0.5 text-[10px] text-slate-300">Unmarked</div>
+                @endif
+            @elseif ($entry?->attendedStandup())
+                <span class="text-xs font-medium text-emerald-600" title="Attended standup">Yes</span>
+            @elseif ($entry?->missedStandup())
+                <span class="text-xs font-medium text-rose-600" title="Did not attend standup">No</span>
+            @else
+                <span class="text-xs text-slate-300">—</span>
+            @endif
+        </td>
+
         @if ($entry && $entry->isFullDayLeave())
             <td colspan="{{ $taskCols }}" class="px-3 py-3">
                 <span class="inline-flex rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">{{ $entry->leaveLabel() }}</span>
@@ -58,7 +90,8 @@
 
     @if ($canEdit)
         <tr x-show="editing" style="display: none;">
-            <td colspan="{{ 2 + $taskCols + ($isLeadViewer ? 1 : 0) }}" class="bg-slate-50 px-4 py-4">
+            {{-- member + standup + task columns + optional feedback + actions --}}
+            <td colspan="{{ 3 + $taskCols + ($isLeadViewer ? 1 : 0) }}" class="bg-slate-50 px-4 py-4">
                 <form method="POST" action="{{ route('tasksheet.entries.upsert') }}" class="space-y-4">
                     @csrf @method('PUT')
                     <input type="hidden" name="team_id" value="{{ $team->id }}">

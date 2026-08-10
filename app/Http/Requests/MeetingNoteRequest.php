@@ -15,6 +15,21 @@ class MeetingNoteRequest extends FormRequest
         return $this->user() !== null;
     }
 
+    /**
+     * A submission that omits the type gets one rather than an error: the
+     * default for a new note, and the note's current type when editing, so a
+     * write that does not mention the type never silently re-categorizes it.
+     * An explicit but unknown type still fails the `in` rule below.
+     */
+    protected function prepareForValidation(): void
+    {
+        if (! $this->filled('type')) {
+            $this->merge([
+                'type' => $this->route('meetingNote')?->type ?? MeetingNote::TYPE_DEFAULT,
+            ]);
+        }
+    }
+
     public function rules(): array
     {
         // Only ongoing releases may be linked — except a note may keep the
@@ -23,6 +38,7 @@ class MeetingNoteRequest extends FormRequest
 
         return [
             'title' => ['required', 'string', 'max:255'],
+            'type' => ['required', Rule::in(array_keys(MeetingNote::TYPES))],
             'meeting_date' => ['required', 'date'],
             'release_id' => ['nullable', 'integer',
                 Rule::exists('releases', 'id')->where(

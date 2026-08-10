@@ -34,6 +34,23 @@ class QuickLinkController extends ApiController
         ]);
     }
 
+    /**
+     * Toggle the caller's pin. Authorized by visibility, not ownership — a
+     * shared link may be pinned by anyone who can see it. Returns the
+     * resulting state so the client never has to guess which way it went.
+     */
+    public function pin(Request $request, QuickLink $quickLink): JsonResponse
+    {
+        $this->authorize('pin', $quickLink);
+
+        $pinned = $this->quickLinks->togglePin($quickLink, $request->user());
+
+        return $this->ok(
+            ['id' => $quickLink->id, 'is_pinned' => $pinned],
+            $pinned ? 'Link pinned.' : 'Link unpinned.'
+        );
+    }
+
     public function store(QuickLinkRequest $request): JsonResponse
     {
         $link = $this->quickLinks->create($request->validated(), $request->user());

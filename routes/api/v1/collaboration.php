@@ -80,4 +80,5 @@ Route::delete('meeting-notes/{meetingNote}', [MeetingNoteController::class, 'des
 Route::get('quick-links', [QuickLinkController::class, 'index'])->name('quick-links.index');
 Route::post('quick-links', [QuickLinkController::class, 'store'])->name('quick-links.store');
 Route::put('quick-links/{quickLink}', [QuickLinkController::class, 'update'])->name('quick-links.update');
+Route::post('quick-links/{quickLink}/pin', [QuickLinkController::class, 'pin'])->name('quick-links.pin');
 Route::delete('quick-links/{quickLink}', [QuickLinkController::class, 'destroy'])->name('quick-links.destroy');

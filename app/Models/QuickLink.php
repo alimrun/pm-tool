@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 /**
  * A saved bookmark shown in the quick-links drawer — private to its author or
@@ -35,9 +36,36 @@ class QuickLink extends Model
         return $this->belongsTo(Release::class);
     }
 
+    /**
+     * Users who have pinned this link. A pin is per-viewer: pinning a shared
+     * link changes nothing for anyone else, which is why it lives on a pivot
+     * rather than a column on the link itself.
+     */
+    public function pinnedBy(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class)->withTimestamps();
+    }
+
     public function isShared(): bool
     {
         return $this->visibility === self::VISIBILITY_SHARED;
+    }
+
+    /**
+     * Whether $user has pinned this link. Prefers the `is_pinned` column the
+     * drawer query selects for the viewer, then a loaded relation, and only
+     * falls back to a query when neither is present — so a listing never
+     * issues one query per row.
+     */
+    public function isPinnedBy(User $user): bool
+    {
+        if (array_key_exists('is_pinned', $this->attributes)) {
+            return (bool) $this->attributes['is_pinned'];
+        }
+
+        return $this->relationLoaded('pinnedBy')
+            ? $this->pinnedBy->contains($user->id)
+            : $this->pinnedBy()->whereKey($user->id)->exists();
     }
 
     /**

@@ -4,9 +4,18 @@
         <div class="flex flex-wrap items-center justify-between gap-3">
             <h2 class="page-title">Notes</h2>
 
-            {{-- Filters: a single day, or a from/to range --}}
+            {{-- Filters: author, plus a single day or a from/to range --}}
             <form method="GET" action="{{ route('notes.index') }}" class="flex flex-wrap items-center gap-1">
-                <label class="field-label !mt-0 !font-normal text-slate-500">Day</label>
+                <label for="author" class="field-label !mt-0 !font-normal text-slate-500">By</label>
+                <select id="author" name="author" onchange="this.form.submit()"
+                        class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                    <option value="">Anyone</option>
+                    @foreach ($authors as $a)
+                        <option value="{{ $a->id }}" @selected($author === $a->id)>{{ $a->id === auth()->id() ? 'Me' : $a->name }}</option>
+                    @endforeach
+                </select>
+
+                <label class="field-label !mt-0 ml-2 !font-normal text-slate-500">Day</label>
                 <input type="date" name="date" value="{{ $date }}" onchange="this.form.submit()"
                        class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 <span class="mx-1 text-xs text-slate-300">or range</span>
@@ -16,7 +25,7 @@
                 <input type="date" name="to" value="{{ $to }}" aria-label="To date"
                        class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
                 <button class="btn-secondary btn-sm">Filter</button>
-                @if ($date || $from || $to)
+                @if ($date || $from || $to || $author)
                     <a href="{{ route('notes.index') }}" class="btn-ghost btn-sm">Clear</a>
                 @endif
             </form>

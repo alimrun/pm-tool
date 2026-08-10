@@ -27,6 +27,18 @@ class QuickLinkController extends Controller
         return back()->with('success', 'Link updated.')->with('quick-links-open', true);
     }
 
+    /** Pinning needs only visibility — you may pin a link you cannot edit. */
+    public function pin(QuickLink $quickLink): RedirectResponse
+    {
+        $this->authorize('pin', $quickLink);
+
+        $pinned = $this->quickLinks->togglePin($quickLink, request()->user());
+
+        return back()
+            ->with('success', $pinned ? 'Link pinned.' : 'Link unpinned.')
+            ->with('quick-links-open', true);
+    }
+
     public function destroy(QuickLink $quickLink): RedirectResponse
     {
         $this->authorize('delete', $quickLink);

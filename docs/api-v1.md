@@ -248,15 +248,52 @@ serialized, so there is no public URL to leak.
 | `GET`             | `/events` — `?year=&month=` or `?from=&to=`; returns `events_by_date` |
 | `POST`            | `/events`                                                |
 | `GET/PUT/DELETE`  | `/events/{id}` — creator or lead may write               |
-| `GET/POST`        | `/notes` — visibility-scoped                             |
+| `GET/POST`        | `/notes` — visibility-scoped; `?author=&date=&from=&to=` |
 | `GET/PUT/DELETE`  | `/notes/{id}` — **author only**, leads included          |
-| `GET/POST`        | `/meeting-notes` — `?release=general\|{id}&from=&to=`     |
+| `GET/POST`        | `/meeting-notes` — filters below                         |
 | `GET/PUT/DELETE`  | `/meeting-notes/{id}` — author edits; author or lead deletes |
 | `GET/POST`        | `/quick-links` — returns `{ mine, shared }`              |
 | `PUT/DELETE`      | `/quick-links/{id}` — **author only**                    |
+| `POST`            | `/quick-links/{id}/pin` — toggles; **anyone who can see it** |
 
 Rich-text bodies (notes, meeting notes, tasksheet fields) are sanitized on write; the value you
 read back is safe to render. A body with no visible text is rejected as empty.
+
+**Note filters.** `GET /notes` takes `author` (a user id) alongside `date` or `from`/`to`. `author`
+narrows **within** what you may already see — it returns that person's shared notes and the ones
+addressed to you, never their private ones, and an id whose notes you cannot see returns an empty
+page rather than an error.
+
+**Quick-link pinning and drawer scoping** — `POST /quick-links/{id}/pin` toggles the *calling user's*
+pin and returns the resulting `{ id, is_pinned }`. A pin is per-viewer: pinning a link someone else
+shared changes nothing for them, and pinning never grants edit or delete rights (those stay with the
+author). `is_pinned` on a quick link is always the requesting user's own.
+
+`GET /quick-links` is the drawer's listing, and is narrower than "every link you may see":
+
+- Ordered **pinned → private → shared**, newest first within each band.
+- A link attached to a **completed** release is omitted. It is not deleted — reopening the release
+  brings it back with its pin intact, and the link stays listed on that release's details page
+  (`GET /releases/{id}`) the whole time. Links attached to no release are never affected.
+
+**Meeting note filters** — `GET /meeting-notes` accepts any combination of:
+
+| Param      | Meaning                                                          |
+| ---------- | ---------------------------------------------------------------- |
+| `release`  | `general` for notes with no release, or a release id             |
+| `type`     | a meeting type — values come from `meeting_note_types` in `/meta` |
+| `author`   | user id — notes that person **wrote**                            |
+| `attendee` | user id — notes that person **attended**                         |
+| `search`   | free text, matched against the title and the body                |
+| `from`/`to`| meeting-date range; a reversed span is swapped, not rejected     |
+
+Filters compose, and all of them apply *after* visibility scoping — filtering by a colleague never
+reveals an attendees-only note you may not read. Results are paginated like every other list.
+
+A meeting note carries a `type` (`type_label` and `type_color` come along for rendering). The type
+list is server-defined: read it from `meeting_note_types` at `GET /meta` rather than hard-coding it,
+so a type added server-side reaches your client without a release. A note whose stored type has
+since been retired still returns a readable `type_label`.
 
 ### Tasksheet
 
@@ -265,12 +302,39 @@ read back is safe to render. A body with no visible text is rejected as empty.
 | `GET`  | `/tasksheet?team_id=&date=`       | Rows + 14-day output trend                   |
 | `PUT`  | `/tasksheet/entries`              | Upsert one member's row for one date         |
 | `GET`  | `/tasksheet/users/{member}`       | That member or a lead only                   |
+| `POST` | `/tasksheet/standup`              | **Leads only** — set standup attendance      |
+| `GET`  | `/tasksheet/report`               | PDF; team-wide is lead-only                  |
 
 - Rows include people whose membership **covered that date** — even if they have since left, been
   deactivated, or been deleted. History does not rewrite itself.
 - A **full-day** leave (`casual`/`sick`) clears the task fields; **`half_day`** keeps them.
 - `feedback` is the lead's private note: **omitted entirely** from a non-lead's payload, and
   ignored on a non-lead's write.
+
+**Standup attendance.** `standup_attended` is **three-valued**: `true` attended, `false` did not
+attend, `null` **not yet marked**. Treat `null` as unknown, never as absent. Set it with
+`POST /tasksheet/standup` (`{ team_id, user_id, date, attended }`) — **leads only**, and marking a
+member who has no row yet creates that row. Sending `attended` empty clears it back to `null`. A
+full-day leave row rejects the write and reports `accepts_standup_attendance: false`; the flag is
+also cleared automatically if a row becomes a full-day leave.
+
+**Tasksheet filters** — `GET /tasksheet` and `GET /tasksheet/users/{member}` both accept:
+
+| Param        | Values                                                       |
+| ------------ | ------------------------------------------------------------ |
+| `attendance` | `attended` · `missed` · `unmarked`                           |
+| `fill`       | `complete` · `partial` · `empty`                             |
+| `leave`      | `working` · `any` · a leave type (`casual`/`sick`/`half_day`) |
+| `member`     | user id — `GET /tasksheet` only                              |
+
+On `GET /tasksheet` these filter the day's **rows**, which include members with no saved row at all —
+so `fill=empty` and `attendance=unmarked` are how you find people who have not filled anything in.
+
+**PDF report** — `GET /tasksheet/report?team=&member=&date=` or `&from=&to=`, plus any of the filters
+above. `date` means a single day; a reversed `from`/`to` is swapped, not rejected. A team-wide report
+requires a lead; a member may request `member={their own id}` only. **`feedback` is withheld from any
+report a non-lead obtains, including their own** — inclusion is decided by who is asking, not by
+whose rows are in it. Returns a PDF body, not JSON.
 
 ### Performance — leads only
 

@@ -15,11 +15,23 @@
 
     <div class="grid gap-6 sm:grid-cols-2">
         <div>
+            <label for="type" class="block text-sm font-medium text-slate-700">Meeting type</label>
+            <select id="type" name="type" class="field-input">
+                @foreach (\App\Models\MeetingNote::TYPES as $val => $label)
+                    <option value="{{ $val }}" @selected(old('type', $meetingNote->type ?? \App\Models\MeetingNote::TYPE_DEFAULT) === $val)>{{ $label }}</option>
+                @endforeach
+            </select>
+            @error('type') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
+        </div>
+        <div>
             <label for="meeting_date" class="block text-sm font-medium text-slate-700">Meeting date</label>
             <input id="meeting_date" name="meeting_date" type="date" required
                    value="{{ old('meeting_date', $meetingNote->meeting_date?->toDateString()) }}" class="field-input">
             @error('meeting_date') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
         </div>
+    </div>
+
+    <div class="grid gap-6 sm:grid-cols-2">
         <div>
             <label for="release_id" class="block text-sm font-medium text-slate-700">Related release <span class="text-slate-400">(optional)</span></label>
             <select id="release_id" name="release_id" class="field-input">
@@ -29,20 +41,6 @@
                 @endforeach
             </select>
             @error('release_id') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
-        </div>
-    </div>
-
-    <div class="grid gap-6 sm:grid-cols-2">
-        <div>
-            <label class="block text-sm font-medium text-slate-700">Attendees <span class="text-slate-400">(optional)</span></label>
-            <div class="mt-1">
-                <x-multi-select
-                    name="attendees"
-                    :options="$users->map(fn ($u) => ['value' => $u->id, 'label' => $u->name, 'hint' => $u->roleLabel()])"
-                    :selected="$selectedAttendees ?? []"
-                    placeholder="Add attendees…" />
-            </div>
-            @error('attendees') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
         </div>
         <div>
             <label for="visibility" class="block text-sm font-medium text-slate-700">Visibility</label>
@@ -54,6 +52,18 @@
             <p class="mt-1 text-xs text-slate-400">“Attendees only” hides the note from everyone but its attendees, you, and team leads.</p>
             @error('visibility') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
         </div>
+    </div>
+
+    <div>
+        <label class="block text-sm font-medium text-slate-700">Attendees <span class="text-slate-400">(optional)</span></label>
+        <div class="mt-1">
+            <x-multi-select
+                name="attendees"
+                :options="$users->map(fn ($u) => ['value' => $u->id, 'label' => $u->name, 'hint' => $u->roleLabel()])"
+                :selected="$selectedAttendees ?? []"
+                placeholder="Add attendees…" />
+        </div>
+        @error('attendees') <p class="mt-1 text-sm text-rose-600">{{ $message }}</p> @enderror
     </div>
 
     <div>

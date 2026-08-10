@@ -103,8 +103,13 @@
                 @else
                     <ul class="mt-3 space-y-2">
                         @foreach ($myQuickLinks as $link)
+                            @php $pinned = $link->isPinnedBy($viewer); @endphp
                             <li x-data="{ editing: false }"
-                                class="group rounded-xl border border-slate-200 p-3 transition hover:border-brand-200 hover:shadow-sm">
+                                @class([
+                                    'group rounded-xl border p-3 transition hover:border-brand-200 hover:shadow-sm',
+                                    'border-amber-200 bg-amber-50/40' => $pinned,
+                                    'border-slate-200' => ! $pinned,
+                                ])>
                                 <div x-show="!editing" class="flex items-start justify-between gap-3">
                                     <div class="min-w-0">
                                         <a href="{{ $link->url }}" target="_blank" rel="noopener"
@@ -126,7 +131,22 @@
                                             @endif
                                         </p>
                                     </div>
-                                    <div class="flex flex-none items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
+                                    <div class="flex flex-none items-center gap-0.5">
+                                        {{-- Always visible when pinned, so the ordering reads as deliberate --}}
+                                        <form method="POST" action="{{ route('quick-links.pin', $link) }}"
+                                              class="{{ $pinned ? '' : 'opacity-0 transition group-hover:opacity-100' }}">
+                                            @csrf
+                                            <button @class([
+                                                        'rounded-lg p-1.5',
+                                                        'text-amber-500 hover:bg-amber-100' => $pinned,
+                                                        'text-slate-400 hover:bg-slate-100 hover:text-slate-600' => ! $pinned,
+                                                    ])
+                                                    title="{{ $pinned ? 'Unpin' : 'Pin to top' }}"
+                                                    aria-label="{{ $pinned ? 'Unpin' : 'Pin' }} {{ $link->label }}">
+                                                <x-icon name="pin" class="h-3.5 w-3.5" />
+                                            </button>
+                                        </form>
+                                        <div class="flex items-center gap-0.5 opacity-0 transition group-hover:opacity-100">
                                         <button type="button" @click="editing = true"
                                                 class="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
                                                 aria-label="Edit {{ $link->label }}">
@@ -138,6 +158,7 @@
                                                 <x-icon name="trash" class="h-3.5 w-3.5" />
                                             </button>
                                         </form>
+                                        </div>
                                     </div>
                                 </div>
 
@@ -188,12 +209,33 @@
                     @else
                         <ul class="mt-3 space-y-2">
                             @foreach ($sharedQuickLinks as $link)
-                                <li class="group rounded-xl border border-slate-200 p-3 transition hover:border-brand-200 hover:shadow-sm">
-                                    <a href="{{ $link->url }}" target="_blank" rel="noopener"
-                                       class="flex items-center gap-1.5 text-sm font-medium text-slate-800 hover:text-brand-700">
-                                        <span class="truncate">{{ $link->label }}</span>
-                                        <svg class="h-3 w-3 flex-none text-slate-300 group-hover:text-brand-400" viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/></svg>
-                                    </a>
+                                @php $pinned = $link->isPinnedBy($viewer); @endphp
+                                <li @class([
+                                        'group rounded-xl border p-3 transition hover:border-brand-200 hover:shadow-sm',
+                                        'border-amber-200 bg-amber-50/40' => $pinned,
+                                        'border-slate-200' => ! $pinned,
+                                    ])>
+                                    <div class="flex items-start justify-between gap-2">
+                                        <a href="{{ $link->url }}" target="_blank" rel="noopener"
+                                           class="flex min-w-0 items-center gap-1.5 text-sm font-medium text-slate-800 hover:text-brand-700">
+                                            <span class="truncate">{{ $link->label }}</span>
+                                            <svg class="h-3 w-3 flex-none text-slate-300 group-hover:text-brand-400" viewBox="0 0 20 20" fill="currentColor"><path d="M11 3a1 1 0 100 2h2.586l-6.293 6.293a1 1 0 101.414 1.414L15 6.414V9a1 1 0 102 0V4a1 1 0 00-1-1h-5z"/><path d="M5 5a2 2 0 00-2 2v8a2 2 0 002 2h8a2 2 0 002-2v-3a1 1 0 10-2 0v3H5V7h3a1 1 0 000-2H5z"/></svg>
+                                        </a>
+                                        {{-- Pinning a teammate's link is per-viewer: they see no change --}}
+                                        <form method="POST" action="{{ route('quick-links.pin', $link) }}"
+                                              class="flex-none {{ $pinned ? '' : 'opacity-0 transition group-hover:opacity-100' }}">
+                                            @csrf
+                                            <button @class([
+                                                        'rounded-lg p-1.5',
+                                                        'text-amber-500 hover:bg-amber-100' => $pinned,
+                                                        'text-slate-400 hover:bg-slate-100 hover:text-slate-600' => ! $pinned,
+                                                    ])
+                                                    title="{{ $pinned ? 'Unpin' : 'Pin to top' }}"
+                                                    aria-label="{{ $pinned ? 'Unpin' : 'Pin' }} {{ $link->label }}">
+                                                <x-icon name="pin" class="h-3.5 w-3.5" />
+                                            </button>
+                                        </form>
+                                    </div>
                                     <p class="mt-0.5 truncate text-xs text-slate-400">{{ parse_url($link->url, PHP_URL_HOST) ?? $link->url }}</p>
                                     <p class="mt-1.5 flex flex-wrap items-center gap-1 text-[11px] text-slate-400">
                                         <span class="flex h-4 w-4 items-center justify-center rounded-full bg-slate-100 text-[9px] font-semibold text-slate-500">{{ strtoupper(mb_substr($link->author->name ?? '?', 0, 1)) }}</span>

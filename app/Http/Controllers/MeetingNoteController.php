@@ -19,15 +19,34 @@ class MeetingNoteController extends Controller
     {
         $filter = request('release'); // null (all) | 'general' | release id
         $range = $this->meetingNotes->normalizeRange(request()->only(['from', 'to']));
+        $type = request()->filled('type') ? request('type') : null;
+        $author = request()->filled('author') ? request()->integer('author') : null;
+        $attendee = request()->filled('attendee') ? request()->integer('attendee') : null;
+        $search = request()->filled('search') ? trim((string) request('search')) : null;
 
         return view('meeting-notes.index', [
             'notes' => $this->meetingNotes
-                ->visibleTo(request()->user(), ['release' => $filter, ...$range])
-                ->get(),
+                ->visibleTo(request()->user(), [
+                    'release' => $filter,
+                    'type' => $type,
+                    'author' => $author,
+                    'attendee' => $attendee,
+                    'search' => $search,
+                    ...$range,
+                ])
+                ->paginate(24)
+                ->withQueryString(),
             'filter' => $filter,
+            'type' => $type,
+            'author' => $author,
+            'attendee' => $attendee,
+            'search' => $search,
             'from' => $range['from'],
             'to' => $range['to'],
             'releases' => Release::orderBy('year', 'desc')->orderBy('name')->get(),
+            // Person filters list everyone who could plausibly appear, including
+            // deactivated users, so an old note stays reachable by its author.
+            'users' => User::orderBy('name')->get(),
         ]);
     }
 

@@ -26,12 +26,20 @@ class MeetingNoteController extends ApiController
         $request->validate([
             'from' => ['nullable', 'date'],
             'to' => ['nullable', 'date'],
+            'type' => ['nullable', 'string'],
+            'author' => ['nullable', 'integer'],
+            'attendee' => ['nullable', 'integer'],
+            'search' => ['nullable', 'string', 'max:255'],
         ]);
 
         $range = $this->meetingNotes->normalizeRange($request->only(['from', 'to']));
 
         $query = $this->meetingNotes->visibleTo($request->user(), [
             'release' => $request->input('release'), // null | 'general' | release id
+            'type' => $request->input('type'),
+            'author' => $this->filterId($request, 'author'),
+            'attendee' => $this->filterId($request, 'attendee'),
+            'search' => $request->input('search'),
             ...$range,
         ]);
 

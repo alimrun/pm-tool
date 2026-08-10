@@ -25,10 +25,49 @@
                 <span class="text-slate-400">–</span>
                 <input type="date" name="to" value="{{ $to }}" aria-label="To date"
                        class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+
+                <label for="f-attendance" class="field-label !mt-0 ml-2 !font-normal text-slate-500">Standup</label>
+                <select id="f-attendance" name="attendance"
+                        class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                    <option value="">Any</option>
+                    <option value="attended" @selected($filters['attendance'] === 'attended')>Attended</option>
+                    <option value="missed" @selected($filters['attendance'] === 'missed')>Did not attend</option>
+                    <option value="unmarked" @selected($filters['attendance'] === 'unmarked')>Not yet marked</option>
+                </select>
+
+                <label for="f-fill" class="field-label !mt-0 ml-2 !font-normal text-slate-500">Sheet</label>
+                <select id="f-fill" name="fill"
+                        class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                    <option value="">Any</option>
+                    <option value="complete" @selected($filters['fill'] === 'complete')>Complete</option>
+                    <option value="partial" @selected($filters['fill'] === 'partial')>Partially filled</option>
+                    <option value="empty" @selected($filters['fill'] === 'empty')>Empty</option>
+                </select>
+
+                <label for="f-leave" class="field-label !mt-0 ml-2 !font-normal text-slate-500">Leave</label>
+                <select id="f-leave" name="leave"
+                        class="rounded-lg border-slate-300 text-sm shadow-sm focus:border-brand-500 focus:ring-brand-500">
+                    <option value="">Any</option>
+                    <option value="working" @selected($filters['leave'] === 'working')>Working</option>
+                    <option value="any" @selected($filters['leave'] === 'any')>On leave</option>
+                    @foreach (\App\Models\TasksheetEntry::LEAVE_TYPES as $val => $label)
+                        <option value="{{ $val }}" @selected($filters['leave'] === $val)>{{ $label }}</option>
+                    @endforeach
+                </select>
+
                 <button class="btn-secondary btn-sm">Apply</button>
-                @if ($from || $to || $teamFilter)
+                @if ($hasFilters)
                     <a href="{{ route('tasksheet.user', $member) }}" class="btn-ghost btn-sm">Clear</a>
                 @endif
+                <a href="{{ route('tasksheet.report', array_filter([
+                        'member' => $member->id,
+                        'team' => $teamFilter,
+                        'from' => $from,
+                        'to' => $to,
+                        'attendance' => $filters['attendance'],
+                        'fill' => $filters['fill'],
+                        'leave' => $filters['leave'],
+                    ])) }}" class="btn-secondary btn-sm">Export PDF</a>
             </form>
         </div>
     </x-slot>
@@ -44,6 +83,7 @@
                             <tr>
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Date</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Team</th>
+                                <th class="px-3 py-3 text-center text-xs font-semibold uppercase tracking-wide text-slate-500" title="Attended the daily standup">Standup</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Task Plan at Morning</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Day End Result</th>
                                 <th class="px-3 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Comment</th>
@@ -70,6 +110,17 @@
                                         @endif
                                     </td>
                                     <td class="whitespace-nowrap px-3 py-3 text-slate-600">{{ $entry->team->name ?? '—' }}</td>
+                                    <td class="px-3 py-3 text-center">
+                                        @if ($entry->isFullDayLeave())
+                                            <span class="text-xs text-slate-300" title="On full-day leave — standup does not apply">—</span>
+                                        @elseif ($entry->attendedStandup())
+                                            <span class="text-xs font-medium text-emerald-600">Yes</span>
+                                        @elseif ($entry->missedStandup())
+                                            <span class="text-xs font-medium text-rose-600">No</span>
+                                        @else
+                                            <span class="text-xs text-slate-300" title="Not yet marked">—</span>
+                                        @endif
+                                    </td>
                                     @if ($entry->isFullDayLeave())
                                         <td colspan="7" class="px-3 py-3">
                                             <span class="inline-flex rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-medium text-sky-700">{{ $entry->leaveLabel() }}</span>

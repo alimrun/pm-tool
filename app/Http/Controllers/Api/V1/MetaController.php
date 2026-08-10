@@ -38,6 +38,8 @@ class MetaController extends ApiController
 
             'event_types' => $this->options(Event::TYPES, Event::TYPE_COLORS),
 
+            'meeting_note_types' => $this->options(MeetingNote::TYPES, MeetingNote::TYPE_COLORS),
+
             'note_visibilities' => $this->options(Note::VISIBILITIES),
             'meeting_note_visibilities' => $this->options(MeetingNote::VISIBILITIES),
             'quick_link_visibilities' => $this->options(QuickLink::VISIBILITIES),

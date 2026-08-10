@@ -38,6 +38,12 @@ class TasksheetEntryResource extends JsonResource
             'ticket_count' => $this->ticket_count,
             'ticket_points' => $this->ticket_points,
 
+            // Three-valued on purpose: null is "not yet marked", which a client
+            // must be able to tell apart from an explicit "did not attend".
+            'standup_attended' => $this->standup_attended,
+            'is_standup_unmarked' => $this->isStandupUnmarked(),
+            'accepts_standup_attendance' => $this->acceptsStandupAttendance(),
+
             'leave_type' => $this->leave_type,
             'leave_label' => $this->leave_type ? $this->leaveLabel() : null,
             'is_on_leave' => $this->isOnLeave(),
